@@ -1,23 +1,41 @@
-# FbTerm - a fast FrameBuffer based TERMinal emulator for linux
+# fbterm-mod
 
-## DESCRIPTION
+A fast framebuffer/vesa based terminal emulator for Linux, forked from [FbTerm](https://github.com/izmntuk/fbterm).
 
-FbTerm is a fast terminal emulator for linux with frame buffer device or VESA video card. Features include:
+## Improvements over upstream
 
-  * mostly as fast as terminal of linux kernel while accelerated scrolling is enabled
-  * select font with fontconfig and draw text with freetype2, same as Qt/Gtk+ based GUI apps
-  * dynamicly create/destroy up to 10 windows initially running default shell
-  * record scrollback history for every window
-  * auto-detect current locale and convert text encoding, support double width scripts like Chinese, Japanese etc
-  * switch between configurable additional text encodings with hot keys on the fly
-  * copy/past selected text between windows with mouse when gpm server is running
-  * change the orientation of screen display, a.k.a. screen rotation
-  * lightweight input method framework with client-server architecture
-  * background image for eye candy
+- **Configurable 16-color palette** — set custom colors via `color-0` through `color-15` in `~/.fbterm-modrc`
+- **Font-based character width** (`font-based-width=yes`) — use actual font glyph metrics to determine character width, ideal for non-fixed-width fonts
+- **Ambiguous-wide character support** (`ambiguous-wide=yes`) — treat CJK ambiguous-width characters as wide
+- **Hardcoded font hinting** to normal level for consistent rendering
+- **Default TERM set to `fbterm`** instead of `linux`, for better compatibility
+- **Avoid accidental vconsole switching** via keyboard shortcuts
+- **Fixed** unexpected character appearing when toggling input method with `Ctrl+Space`
 
-read man page doc/fbterm.1 for usage help.
+## Dependencies
 
-### INPUT METHOD
-Instead of adding input method directly in FbTerm, a client-server based input method framework is designed to do this work. FbTerm acts as a client, standalone IM program as a server, and they run in seperated processes.
+- freetype2
+- fontconfig
+- libx86 (optional, for VESA support)
+- gpm (optional, for mouse support)
 
-If you want to develope a new IM program for FbTerm, there is a IM example in im/ directory, which help you to understand IM architecture and provide some base sources to simplify the development.
+## Build
+
+```bash
+autoreconf -i
+./configure
+make
+sudo make install
+```
+
+## Usage
+
+```
+fbterm-mod [options] [--] [command [arguments]]
+```
+
+See `man fbterm-mod` and comments in `~/.fbterm-modrc` for configuration details.
+
+## License
+
+GPLv2+
