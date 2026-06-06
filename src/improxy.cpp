@@ -420,12 +420,14 @@ void ImProxy::doDrawText(Message *m)
 
 	if (!len) return;
 
+	u32 utf32[len];
 	bool dws[len];
 	for (u16 i = 0; i < len; i++) {
+		utf32[i] = utf16[i];
 		dws[i] = (VTerm::charWidth(utf16[i]) == 2);
 	}
 
-	Screen::instance()->drawText(m->drawText.x, m->drawText.y, m->drawText.fc, m->drawText.bc, len, (u32*)utf16, dws);
+	Screen::instance()->drawText(m->drawText.x, m->drawText.y, m->drawText.fc, m->drawText.bc, len, utf32, dws);
 }
 
 void ImProxy::waitImMessage(u32 type)
