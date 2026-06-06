@@ -26,8 +26,10 @@
 
 #define NR_COLORS 256
 
-struct Color {
-	u8 red, green, blue;
+struct RenderColor {
+	u32 pixel;         // pre-computed framebuffer pixel value
+	const Color* rgb;  // RGB for alpha blending (palette or direct)
+	u8 index;          // palette index, or 255 for direct colors
 };
 
 typedef enum { Rotate0 = 0, Rotate90, Rotate180, Rotate270 } RotateType;
@@ -45,11 +47,14 @@ public :
 	void rotateRect(u32 &x, u32 &y, u32 &w, u32 &h);
 	void rotatePoint(u32 w, u32 h, u32 &x, u32 &y);
 
-	void drawText(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, bool bold = false, bool italic = false, bool underline = false, bool strikethrough = false);
+	void drawText(u32 x, u32 y, u8 fc, u8 bc, bool direct_fg, bool direct_bg,
+		     u16 num, u32 *text, bool *dw, bool bold = false, bool italic = false,
+		     bool underline = false, bool strikethrough = false);
 	void fillRect(u32 x, u32 y, u32 w, u32 h, u8 color);
 
 	bool move(u16 scol, u16 srow, u16 dcol, u16 drow, u16 w, u16 h);
 	void setPalette(const Color *palette);
+	void setDirectColorTable(const Color *table) { mDirectColorTable = table; }
 	
 	void enableScroll(bool enable) { mScrollEnable = enable; }
 
@@ -77,29 +82,38 @@ private:
 	virtual const s8 *drvId() = 0;
 
 	void eraseMargin(bool top, u16 h);
-	void drawGlyphs(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, bool bold, bool italic, bool underline, bool strikethrough);
-	void drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold, bool italic, bool underline, bool strikethrough);
+	void drawGlyphs(u32 x, u32 y, const RenderColor& fg, const RenderColor& bg,
+			u16 num, u32 *text, bool *dw, bool bold, bool italic,
+			bool underline, bool strikethrough);
+	void drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& bg,
+		       u32 code, bool dw, bool bold, bool italic,
+		       bool underline, bool strikethrough);
 	void adjustOffset(u32 &x, u32 &y);
 
 	void initFillDraw();
 	void endFillDraw();
 
-	void fillX(u32 x, u32 y, u32 w, u8 color);
-	void fillXBg(u32 x, u32 y, u32 w, u8 color);
-	void draw8(u32 x, u32 y, u32 w, u8 fc, u8 bc, u8 *pixmap);
-	void draw15(u32 x, u32 y, u32 w, u8 fc, u8 bc, u8 *pixmap);
-	void draw16(u32 x, u32 y, u32 w, u8 fc, u8 bc, u8 *pixmap);
-	void draw32(u32 x, u32 y, u32 w, u8 fc, u8 bc, u8 *pixmap);
-	void draw8Bg(u32 x, u32 y, u32 w, u8 fc, u8 bc, u8 *pixmap);
-	void draw15Bg(u32 x, u32 y, u32 w, u8 fc, u8 bc, u8 *pixmap);
-	void draw16Bg(u32 x, u32 y, u32 w, u8 fc, u8 bc, u8 *pixmap);
-	void draw32Bg(u32 x, u32 y, u32 w, u8 fc, u8 bc, u8 *pixmap);
+	void fillX(u32 x, u32 y, u32 w, u32 pixel);
+	void fillXBg(u32 x, u32 y, u32 w, u32 pixel);
+	void draw8(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap);
+	void draw15(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap);
+	void draw16(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap);
+	void draw32(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap);
+	void draw8Bg(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap);
+	void draw15Bg(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap);
+	void draw16Bg(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap);
+	void draw32Bg(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap);
 
-	typedef void (Screen::*fillFun)(u32 x, u32 y, u32 w, u8 color);
-	typedef void (Screen::*drawFun)(u32 x, u32 y, u32 w, u8 fc, u8 bc, u8 *pixmap);
+	typedef void (Screen::*fillFun)(u32 x, u32 y, u32 w, u32 pixel);
+	typedef void (Screen::*drawFun)(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap);
 
 	fillFun fill;
 	drawFun draw;
 	bool mScrollEnable;
+	const Color *mDirectColorTable;
+	u32 mFillColors[NR_COLORS];
+
+	RenderColor resolveColor(u8 index, bool direct) const;
+	void fillRectPixel(u32 x, u32 y, u32 w, u32 h, u32 pixel);
 };
 #endif

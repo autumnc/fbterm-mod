@@ -534,6 +534,30 @@ void VTerm::set_display_attr()
 		case 49:
 			char_attr.bcolor = cur_bcolor;
 			break;
+		case 38:
+			if (n + 2 <= npar && param[n + 1] == 5) {
+				char_attr.fcolor = param[n + 2];
+				char_attr.direct_fg = 0;
+				n += 2;
+			} else if (n + 4 <= npar && param[n + 1] == 2) {
+				char_attr.fcolor = allocDirectColor(
+					param[n + 2] & 0xff, param[n + 3] & 0xff, param[n + 4] & 0xff);
+				char_attr.direct_fg = 1;
+				n += 4;
+			}
+			break;
+		case 48:
+			if (n + 2 <= npar && param[n + 1] == 5) {
+				char_attr.bcolor = param[n + 2];
+				char_attr.direct_bg = 0;
+				n += 2;
+			} else if (n + 4 <= npar && param[n + 1] == 2) {
+				char_attr.bcolor = allocDirectColor(
+					param[n + 2] & 0xff, param[n + 3] & 0xff, param[n + 4] & 0xff);
+				char_attr.direct_bg = 1;
+				n += 4;
+			}
+			break;
 		default :
 			break;
 		}
@@ -686,11 +710,17 @@ void VTerm::fbterm_specific()
 {
 	switch (param[0]) {
 	case 1:
-		if (npar == 1) char_attr.fcolor = param[1];
+		if (npar == 1) {
+			char_attr.fcolor = param[1];
+			char_attr.direct_fg = 0;
+		}
 		break;
 
 	case 2:
-		if (npar == 1) char_attr.bcolor = param[1];
+		if (npar == 1) {
+			char_attr.bcolor = param[1];
+			char_attr.direct_bg = 0;
+		}
 		break;
 
 	case 3:

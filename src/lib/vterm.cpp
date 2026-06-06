@@ -25,7 +25,10 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-VTerm::CharAttr VTerm::default_char_attr = { 0, 0, 1, 0, 0, 0, 0, 0, VTerm::CharAttr::Single };
+// Verify CharAttr size didn't grow (critical for memcpy compatibility)
+static_assert(sizeof(VTerm::CharAttr) == 4, "CharAttr must remain 4 bytes");
+
+VTerm::CharAttr VTerm::default_char_attr = { 0, 0, 1, 0, 0, 0, 0, 0, VTerm::CharAttr::Single, 0, 0 };
 
 VTerm::CharAttr VTerm::normal_char_attr()
 {
@@ -46,6 +49,8 @@ VTerm::CharAttr VTerm::erase_char_attr()
 	a.fcolor = char_attr.fcolor;
 	a.bcolor = char_attr.bcolor;
 	a.blink = char_attr.blink;
+	a.direct_fg = char_attr.direct_fg;
+	a.direct_bg = char_attr.direct_bg;
 
 	return a;
 }
@@ -106,6 +111,8 @@ VTerm::VTerm(u16 w, u16 h)
 	history_full = false;
 	history_save_line = 0;
 	visual_start_line = 0;
+
+	mDirectColorCount = 0;
 
 	reset();
 	resize(w, h);
@@ -825,4 +832,26 @@ u16 VTerm::get_line(u16 y)
 	if (line >= total_history_lines()) return linenumbers[line - total_history_lines()];
 
 	return ((history_full ? history_save_line : 0) + line) % history_lines;
+}
+
+u8 VTerm::allocDirectColor(u8 r, u8 g, u8 b)
+{
+	for (u8 i = 0; i < mDirectColorCount; i++) {
+		if (mDirectColors[i].red == r && mDirectColors[i].green == g && mDirectColors[i].blue == b)
+			return i;
+	}
+
+	if (mDirectColorCount < NR_DIRECT_COLORS) {
+		mDirectColors[mDirectColorCount].red = r;
+		mDirectColors[mDirectColorCount].green = g;
+		mDirectColors[mDirectColorCount].blue = b;
+		return mDirectColorCount++;
+	}
+
+	mDirectColorCount = 0;
+	mDirectColors[0].red = r;
+	mDirectColors[0].green = g;
+	mDirectColors[0].blue = b;
+	mDirectColorCount = 1;
+	return 0;
 }

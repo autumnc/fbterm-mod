@@ -103,6 +103,7 @@ Screen::Screen()
 
 	mVMemBase = 0;
 	mPalette = 0;
+	mDirectColorTable = 0;
 
 	u32 type = Rotate0;
 	Config::instance()->getOption("screen-rotate", type);
@@ -197,8 +198,13 @@ void Screen::eraseMargin(bool top, u16 h)
 	}
 }
 
-void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, bool bold, bool italic, bool underline, bool strikethrough)
+void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, bool direct_fg, bool direct_bg,
+		      u16 num, u32 *text, bool *dw, bool bold, bool italic,
+		      bool underline, bool strikethrough)
 {
+	RenderColor fg = resolveColor(fc, direct_fg);
+	RenderColor bg = resolveColor(bc, direct_bg);
+
 	u32 startx, fw = FW(1);
 
 	u16 startnum; u32 *starttext;
@@ -208,7 +214,7 @@ void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, 
 		if (*text == 0x20) {
 			if (draw_text) {
 				draw_text = false;
-				drawGlyphs(startx, y, fc, bc, startnum - num, starttext, startdw, bold, italic, underline, strikethrough);
+				drawGlyphs(startx, y, fg, bg, startnum - num, starttext, startdw, bold, italic, underline, strikethrough);
 			}
 
 			if (!draw_space) {
@@ -218,7 +224,7 @@ void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, 
 		} else {
 			if (draw_space) {
 				draw_space = false;
-				fillRect(startx, y, x - startx, FH(1), bc);
+				fillRectPixel(startx, y, x - startx, FH(1), bg.pixel);
 			}
 
 			if (!draw_text) {
@@ -234,16 +240,18 @@ void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, 
 	}
 
 	if (draw_text) {
-		drawGlyphs(startx, y, fc, bc, startnum - num, starttext, startdw, bold, italic, underline, strikethrough);
+		drawGlyphs(startx, y, fg, bg, startnum - num, starttext, startdw, bold, italic, underline, strikethrough);
 	} else if (draw_space) {
-		fillRect(startx, y, x - startx, FH(1), bc);
+		fillRectPixel(startx, y, x - startx, FH(1), bg.pixel);
 	}
 }
 
-void Screen::drawGlyphs(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, bool bold, bool italic, bool underline, bool strikethrough)
+void Screen::drawGlyphs(u32 x, u32 y, const RenderColor& fg, const RenderColor& bg,
+			u16 num, u32 *text, bool *dw, bool bold, bool italic,
+			bool underline, bool strikethrough)
 {
 	for (; num--; text++, dw++) {
-		drawGlyph(x, y, fc, bc, *text, *dw, bold, italic, underline, strikethrough);
+		drawGlyph(x, y, fg, bg, *text, *dw, bold, italic, underline, strikethrough);
 		x += *dw ? FW(2) : FW(1);
 	}
 }
@@ -256,6 +264,11 @@ void Screen::adjustOffset(u32 &x, u32 &y)
 
 void Screen::fillRect(u32 x, u32 y, u32 w, u32 h, u8 color)
 {
+	fillRectPixel(x, y, w, h, mFillColors[color]);
+}
+
+void Screen::fillRectPixel(u32 x, u32 y, u32 w, u32 h, u32 pixel)
+{
 	if (x >= mWidth || y >= mHeight || !w || !h) return;
 	if (x + w > mWidth) w = mWidth - x;
 	if (y + h > mHeight) h = mHeight - y;
@@ -265,11 +278,13 @@ void Screen::fillRect(u32 x, u32 y, u32 w, u32 h, u8 color)
 
 	for (; h--;) {
 		if (mScrollType == YWrap && y > mOffsetMax) y -= mOffsetMax + 1;
-		(this->*fill)(x, y++, w, color);
+		(this->*fill)(x, y++, w, pixel);
 	}
 }
 
-void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold, bool italic, bool underline, bool strikethrough)
+void Screen::drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& bg,
+		       u32 code, bool dw, bool bold, bool italic,
+		       bool underline, bool strikethrough)
 {
 	if (x >= mWidth || y >= mHeight) return;
 
@@ -280,7 +295,7 @@ void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold,
 
 	Font::Glyph *glyph = (Font::Glyph *)Font::instance()->getGlyph(code, bold, italic);
 	if (!glyph) {
-		fillRect(x, y, w, h, bc);
+		fillRectPixel(x, y, w, h, bg.pixel);
 	} else {
 		s32 top = glyph->top;
 	if (top < 0) top = 0;
@@ -298,14 +313,14 @@ void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold,
 	if (y + top + height > mHeight) height = mHeight - (y + top);
 	if (height < 0) height = 0;
 
-	if (top) fillRect(x, y, w, top, bc);
-	if (left > 0) fillRect(x, y + top, left, height, bc);
+	if (top) fillRectPixel(x, y, w, top, bg.pixel);
+	if (left > 0) fillRectPixel(x, y + top, left, height, bg.pixel);
 
 	s32 right = width + left;
-	if (w > right) fillRect((s32)x + right, y + top, w - right, height, bc);
+	if (w > right) fillRectPixel((s32)x + right, y + top, w - right, height, bg.pixel);
 
 	s32 bot = top + height;
-	if (h > bot) fillRect(x, y + bot, w, h - bot, bc);
+	if (h > bot) fillRectPixel(x, y + bot, w, h - bot, bg.pixel);
 
 	x += left;
 	y += top;
@@ -330,16 +345,16 @@ void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold,
 	adjustOffset(x, y);
 	for (; nheight--; y++, pixmap += glyph->pitch) {
 		if ((mScrollType == YWrap) && y > mOffsetMax) y -= mOffsetMax + 1;
-		(this->*draw)(x, y, nwidth, fc, bc, pixmap);
+		(this->*draw)(x, y, nwidth, fg, bg, pixmap);
 	}
 	}
 	}
 
 	if (underline) {
-		fillRect(cellX, cellY + cellH - 2, cellW, 1, fc);
+		fillRectPixel(cellX, cellY + cellH - 2, cellW, 1, fg.pixel);
 	}
 	if (strikethrough) {
-		fillRect(cellX, cellY + cellH / 2, cellW, 1, fc);
+		fillRectPixel(cellX, cellY + cellH / 2, cellW, 1, fg.pixel);
 	}
 }
 
@@ -401,4 +416,34 @@ void Screen::rotatePoint(u32 W, u32 H, u32 &x, u32 &y)
 		x = tmp;
 		break;
 	}
+}
+
+RenderColor Screen::resolveColor(u8 index, bool direct) const
+{
+	RenderColor rc;
+	if (direct && mDirectColorTable) {
+		rc.rgb = &mDirectColorTable[index];
+		rc.index = 255;
+		switch (mBitsPerPixel) {
+		case 8:
+			rc.pixel = (index << 24) | (index << 16) | (index << 8) | index;
+			break;
+		case 15:
+			rc.pixel = ((rc.rgb->red >> 3) << 10) | ((rc.rgb->green >> 3) << 5) | (rc.rgb->blue >> 3);
+			rc.pixel |= rc.pixel << 16;
+			break;
+		case 16:
+			rc.pixel = ((rc.rgb->red >> 3) << 11) | ((rc.rgb->green >> 2) << 5) | (rc.rgb->blue >> 3);
+			rc.pixel |= rc.pixel << 16;
+			break;
+		default:
+			rc.pixel = (rc.rgb->red << 16) | (rc.rgb->green << 8) | rc.rgb->blue;
+			break;
+		}
+	} else {
+		rc.pixel = mFillColors[index];
+		rc.rgb = &mPalette[index];
+		rc.index = index;
+	}
+	return rc;
 }

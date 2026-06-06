@@ -372,7 +372,10 @@ void FbShell::drawChars(CharAttr attr, u16 x, u16 y, u16 w, u16 num, u32 *chars,
 	bool italic = (bool)attr.italic;
 	bool underline = (bool)attr.underline;
 	bool strikethrough = (bool)attr.strikethrough;
-	screen->drawText(FW(x), FH(y), attr.fcolor, attr.bcolor, num, chars, dws, bold, italic, underline, strikethrough);
+	screen->setDirectColorTable(directColorTable());
+	screen->drawText(FW(x), FH(y), attr.fcolor, attr.bcolor,
+			 attr.direct_fg, attr.direct_bg,
+			 num, chars, dws, bold, italic, underline, strikethrough);
 
 	if (mImProxy) {
 		Rectangle rect = { FW(x), FH(y), FW(w), FH(1) };
@@ -447,6 +450,9 @@ void FbShell::updateCursor()
 			u8 temp = attr.fcolor;
 			attr.fcolor = attr.bcolor;
 			attr.bcolor = temp;
+			bool dtemp = attr.direct_fg;
+			attr.direct_fg = attr.direct_bg;
+			attr.direct_bg = dtemp;
 		}
 
 		drawChars(attr, x, mCursor.y, dw ? FW(2) : FW(1), 1, &mCursor.code, &dw);
@@ -666,7 +672,9 @@ void FbShell::mouseInput(u16 x, u16 y, s32 type, s32 buttons)
 		u32 code = charCode(x, y);
 
 		if (attr.type == CharAttr::DoubleRight) x--;
-		screen->drawText(FW(x), FH(y), attr.bcolor, attr.fcolor, 1, &code, &dw);
+		screen->setDirectColorTable(directColorTable());
+		screen->drawText(FW(x), FH(y), attr.bcolor, attr.fcolor,
+				 attr.direct_bg, attr.direct_fg, 1, &code, &dw);
 
 		mMousePointer.x = x;
 		mMousePointer.y = y;
@@ -702,17 +710,25 @@ void FbShell::expose(u16 x, u16 y, u16 w, u16 h)
 
 void FbShell::adjustCharAttr(CharAttr &attr)
 {
-	if (attr.intensity == 0) attr.fcolor = 8; // gray
+	// Half-bright: only affects palette colors
+	if (attr.intensity == 0 && !attr.direct_fg) attr.fcolor = 8;
 
-	if (attr.blink && attr.bcolor < 8) attr.bcolor ^= 8;
-	if (attr.intensity == 2 && attr.fcolor < 8) attr.fcolor ^= 8;
+	// Blink brightens background: only palette colors 0-7
+	if (attr.blink && !attr.direct_bg && attr.bcolor < 8) attr.bcolor ^= 8;
+
+	// Bold brightens foreground: only palette colors 0-7
+	if (attr.intensity == 2 && !attr.direct_fg && attr.fcolor < 8) attr.fcolor ^= 8;
 
 	if (attr.reverse) {
 		u16 temp = attr.bcolor;
 		attr.bcolor = attr.fcolor;
 		attr.fcolor = temp;
 
-		if (attr.bcolor > 8 && attr.bcolor < 16) attr.bcolor -= 8;
+		bool dtemp = attr.direct_bg;
+		attr.direct_bg = attr.direct_fg;
+		attr.direct_fg = dtemp;
+
+		if (!attr.direct_bg && attr.bcolor > 8 && attr.bcolor < 16) attr.bcolor -= 8;
 	}
 }
 

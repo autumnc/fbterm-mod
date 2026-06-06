@@ -33,7 +33,8 @@ public:
 		bool operator != (const CharAttr a) {
 			return fcolor != a.fcolor || bcolor != a.bcolor || intensity != a.intensity
 				|| italic != a.italic || underline != a.underline || blink != a.blink || reverse != a.reverse
-				|| strikethrough != a.strikethrough;
+				|| strikethrough != a.strikethrough
+				|| direct_fg != a.direct_fg || direct_bg != a.direct_bg;
 		}
 
 		u16 fcolor : 8;
@@ -45,6 +46,8 @@ public:
 		u16 reverse : 1;
 		u16 strikethrough : 1;
 		u16 type : 2;
+		u16 direct_fg : 1;
+		u16 direct_bg : 1;
 	};
 
 	typedef enum {
@@ -90,6 +93,10 @@ public:
 	CharAttr charAttr(u16 x, u16 y) { return attrs[get_line(y) * max_width + x]; }
 
 	static s32 charWidth(u32 ucs);
+
+	// Direct color table for true color (24-bit) support
+	static const u8 NR_DIRECT_COLORS = 64;
+	const Color* directColorTable() const { return mDirectColors; }
 
 protected:
 	virtual void drawChars(CharAttr attr, u16 x, u16 y, u16 w, u16 num, u32 *chars, bool *dws) = 0;
@@ -273,6 +280,11 @@ private:
 	static u16 history_lines;
 	bool history_full;
 	u32 history_save_line, visual_start_line;
+
+	// Direct color table for true color support
+	Color mDirectColors[NR_DIRECT_COLORS];
+	u8 mDirectColorCount;
+	u8 allocDirectColor(u8 r, u8 g, u8 b);
 };
 
 #endif

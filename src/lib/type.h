@@ -31,4 +31,8 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
 
+struct Color {
+	u8 red, green, blue;
+};
+
 #endif
