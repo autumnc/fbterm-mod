@@ -336,7 +336,7 @@ void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold,
 	}
 
 	if (underline) {
-		fillRect(cellX, cellY + cellH - 2, cellW, 1, fc);
+		fillRect(cellX, cellY + cellH - 3, cellW, 2, fc);
 	}
 	if (strikethrough) {
 		fillRect(cellX, cellY + cellH / 2, cellW, 1, fc);
