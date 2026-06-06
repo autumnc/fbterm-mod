@@ -32,7 +32,8 @@ public:
 
 		bool operator != (const CharAttr a) {
 			return fcolor != a.fcolor || bcolor != a.bcolor || intensity != a.intensity
-				|| italic != a.italic || underline != a.underline || blink != a.blink || reverse != a.reverse;
+				|| italic != a.italic || underline != a.underline || blink != a.blink || reverse != a.reverse
+				|| strikethrough != a.strikethrough;
 		}
 
 		u16 fcolor : 8;
@@ -42,6 +43,7 @@ public:
 		u16 underline : 1;
 		u16 blink : 1;
 		u16 reverse : 1;
+		u16 strikethrough : 1;
 		u16 type : 2;
 	};
 

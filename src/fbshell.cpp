@@ -370,7 +370,9 @@ void FbShell::drawChars(CharAttr attr, u16 x, u16 y, u16 w, u16 num, u32 *chars,
 	adjustCharAttr(attr);
 	bool bold = (attr.intensity == 2);
 	bool italic = (bool)attr.italic;
-	screen->drawText(FW(x), FH(y), attr.fcolor, attr.bcolor, num, chars, dws, bold, italic);
+	bool underline = (bool)attr.underline;
+	bool strikethrough = (bool)attr.strikethrough;
+	screen->drawText(FW(x), FH(y), attr.fcolor, attr.bcolor, num, chars, dws, bold, italic, underline, strikethrough);
 
 	if (mImProxy) {
 		Rectangle rect = { FW(x), FH(y), FW(w), FH(1) };
@@ -700,8 +702,7 @@ void FbShell::expose(u16 x, u16 y, u16 w, u16 h)
 
 void FbShell::adjustCharAttr(CharAttr &attr)
 {
-	if (attr.underline) attr.fcolor = 6; // cyan
-	else if (attr.intensity == 0) attr.fcolor = 8; // gray
+	if (attr.intensity == 0) attr.fcolor = 8; // gray
 
 	if (attr.blink && attr.bcolor < 8) attr.bcolor ^= 8;
 	if (attr.intensity == 2 && attr.fcolor < 8) attr.fcolor ^= 8;

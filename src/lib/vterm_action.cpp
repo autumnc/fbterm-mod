@@ -485,6 +485,9 @@ void VTerm::set_display_attr()
 		case 7:
 			char_attr.reverse = true;
 			break;
+		case 9:
+			char_attr.strikethrough = true;
+			break;
 		case 10:
 			charset = (g0_is_active ? g0_charset : g1_charset);
 			mode_flags.display_ctrl = false;
@@ -515,6 +518,9 @@ void VTerm::set_display_attr()
 			break;
 		case 27:
 			char_attr.reverse = false;
+			break;
+		case 29:
+			char_attr.strikethrough = false;
 			break;
 		case 30 ... 37:
 			char_attr.fcolor = param[n] % 10;

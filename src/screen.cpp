@@ -197,7 +197,7 @@ void Screen::eraseMargin(bool top, u16 h)
 	}
 }
 
-void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, bool bold, bool italic)
+void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, bool bold, bool italic, bool underline, bool strikethrough)
 {
 	u32 startx, fw = FW(1);
 
@@ -208,7 +208,7 @@ void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, 
 		if (*text == 0x20) {
 			if (draw_text) {
 				draw_text = false;
-				drawGlyphs(startx, y, fc, bc, startnum - num, starttext, startdw, bold, italic);
+				drawGlyphs(startx, y, fc, bc, startnum - num, starttext, startdw, bold, italic, underline, strikethrough);
 			}
 
 			if (!draw_space) {
@@ -234,16 +234,16 @@ void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, 
 	}
 
 	if (draw_text) {
-		drawGlyphs(startx, y, fc, bc, startnum - num, starttext, startdw, bold, italic);
+		drawGlyphs(startx, y, fc, bc, startnum - num, starttext, startdw, bold, italic, underline, strikethrough);
 	} else if (draw_space) {
 		fillRect(startx, y, x - startx, FH(1), bc);
 	}
 }
 
-void Screen::drawGlyphs(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, bool bold, bool italic)
+void Screen::drawGlyphs(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, bool bold, bool italic, bool underline, bool strikethrough)
 {
 	for (; num--; text++, dw++) {
-		drawGlyph(x, y, fc, bc, *text, *dw, bold, italic);
+		drawGlyph(x, y, fc, bc, *text, *dw, bold, italic, underline, strikethrough);
 		x += *dw ? FW(2) : FW(1);
 	}
 }
@@ -269,7 +269,7 @@ void Screen::fillRect(u32 x, u32 y, u32 w, u32 h, u8 color)
 	}
 }
 
-void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold, bool italic)
+void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold, bool italic, bool underline, bool strikethrough)
 {
 	if (x >= mWidth || y >= mHeight) return;
 
@@ -332,6 +332,16 @@ void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold,
 	for (; nheight--; y++, pixmap += glyph->pitch) {
 		if ((mScrollType == YWrap) && y > mOffsetMax) y -= mOffsetMax + 1;
 		(this->*draw)(x, y, nwidth, fc, bc, pixmap);
+	}
+
+	if (underline) {
+		u32 uy = (y + mHeight) - 2;
+		if (uy >= mHeight) uy = mHeight - 2;
+		fillRect(x - left, y + top + height, w, 1, fc);
+	}
+	if (strikethrough) {
+		u32 sy = (y + mHeight) / 2;
+		fillRect(x - left, y + top + height / 2, w, 1, fc);
 	}
 }
 
