@@ -197,18 +197,18 @@ void Screen::eraseMargin(bool top, u16 h)
 	}
 }
 
-void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, u16 num, u16 *text, bool *dw)
+void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, bool bold, bool italic)
 {
 	u32 startx, fw = FW(1);
 
-	u16 startnum, *starttext;
+	u16 startnum; u32 *starttext;
 	bool *startdw, draw_space = false, draw_text = false;
 
 	for (; num; num--, text++, dw++, x += fw) {
 		if (*text == 0x20) {
 			if (draw_text) {
 				draw_text = false;
-				drawGlyphs(startx, y, fc, bc, startnum - num, starttext, startdw);
+				drawGlyphs(startx, y, fc, bc, startnum - num, starttext, startdw, bold, italic);
 			}
 
 			if (!draw_space) {
@@ -234,16 +234,16 @@ void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, u16 num, u16 *text, bool *dw)
 	}
 
 	if (draw_text) {
-		drawGlyphs(startx, y, fc, bc, startnum - num, starttext, startdw);
+		drawGlyphs(startx, y, fc, bc, startnum - num, starttext, startdw, bold, italic);
 	} else if (draw_space) {
 		fillRect(startx, y, x - startx, FH(1), bc);
 	}
 }
 
-void Screen::drawGlyphs(u32 x, u32 y, u8 fc, u8 bc, u16 num, u16 *text, bool *dw)
+void Screen::drawGlyphs(u32 x, u32 y, u8 fc, u8 bc, u16 num, u32 *text, bool *dw, bool bold, bool italic)
 {
 	for (; num--; text++, dw++) {
-		drawGlyph(x, y, fc, bc, *text, *dw);
+		drawGlyph(x, y, fc, bc, *text, *dw, bold, italic);
 		x += *dw ? FW(2) : FW(1);
 	}
 }
@@ -269,7 +269,7 @@ void Screen::fillRect(u32 x, u32 y, u32 w, u32 h, u8 color)
 	}
 }
 
-void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u16 code, bool dw)
+void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold, bool italic)
 {
 	if (x >= mWidth || y >= mHeight) return;
 
@@ -277,7 +277,7 @@ void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u16 code, bool dw)
 	if (x + w > mWidth) w = mWidth - x;
 	if (y + h > mHeight) h = mHeight - y;
 
-	Font::Glyph *glyph = (Font::Glyph *)Font::instance()->getGlyph(code);
+	Font::Glyph *glyph = (Font::Glyph *)Font::instance()->getGlyph(code, bold, italic);
 	if (!glyph) {
 		fillRect(x, y, w, h, bc);
 		return;

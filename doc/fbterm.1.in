@@ -1,6 +1,6 @@
-.TH "FbTerm" "1" "@RELEASE_DATE@" "FbTerm @VERSION@" "FbTerm User Manual"
+.TH "fbterm-mod" "1" "@RELEASE_DATE@" "fbterm-mod @VERSION@" "fbterm-mod User Manual"
 .SH "NAME"
-FbTerm - a fast Frame Buffer based TERMinal emulator for linux
+fbterm-mod - a fast Frame Buffer based TERMinal emulator for linux
 .SH "SYNOPSIS"
 \fBfbterm\fR [\fIoptions\fR] [--] [\fIcommand\fR [\fIarguments\fR]]
 .SH "DESCRIPTION"
@@ -22,7 +22,7 @@ checks the \fISHELL\fR variable. If that is not set, it tries to use the user's 
 file. If that is not set, /bin/sh will be used. You should use the \fI--\fR argument to separate FbTerm's options from
 the arguments supplied to the \fIcommand\fR.
 
-FbTerm first uses option value specified in command line arguments, then in the configure file \fI$HOME/.fbtermrc\fR.
+FbTerm first uses option value specified in command line arguments, then in the configure file \fI$HOME/.fbterm-modrc\fR.
 If that file doesn't exist, FbTerm will create it with default options on startup.
 .TP
 \fB-h, --help\fR
@@ -77,7 +77,7 @@ specify VESA video mode
 display available VESA video modes
 
 .TP
-see comments in \fI$HOME/.fbtermrc\fR for details of these options.
+see comments in \fI$HOME/.fbterm-modrc\fR for details of these options.
 .SH "SHORTCUT SUMMARY"
 keyboard:
   CTRL_ALT_E:    exit from FbTerm

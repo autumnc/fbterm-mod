@@ -21,6 +21,7 @@
 #include <fontconfig/fontconfig.h>
 #include <ft2build.h>
 #include FT_GLYPH_H
+#include FT_SYNTHESIS_H
 #include "font.h"
 #include "screen.h"
 #include "fbconfig.h"
@@ -31,17 +32,74 @@
 
 static FcCharSet *unicodeMap;
 static FcFontSet *fontList;
+static FcFontSet *fontListBold;
+static FcFontSet *fontListItalic;
 
 static FT_Library ftlib;
 static FT_Face *fontFaces;
+static FT_Face *fontFacesBold;
+static FT_Face *fontFacesItalic;
 static u32 *fontFlags;
+static u32 *fontFlagsBold;
+static u32 *fontFlagsItalic;
 
 static Font::Glyph **glyphCache;
 static bool *glyphCacheInited;
+static Font::Glyph **glyphCacheBold;
+static bool *glyphCacheInitedBold;
+static Font::Glyph **glyphCacheItalic;
+static bool *glyphCacheInitedItalic;
 
-static void openFont(u32 index);
+static void openFont(u32 index, FcFontSet *list, FT_Face *faces, u32 *flags);
 
 DEFINE_INSTANCE(Font)
+
+
+static FcFontSet *createFontList(const s8 *fontNames, u32 pixelSize)
+{
+	if (!fontNames || !*fontNames) return 0;
+
+	FcPattern *pat = FcNameParse((FcChar8 *)fontNames);
+	FcPatternAddDouble(pat, FC_PIXEL_SIZE, (double)pixelSize);
+	FcPatternAddString(pat, FC_LANG, (FcChar8 *)"en");
+	FcConfigSubstitute(NULL, pat, FcMatchPattern);
+	FcDefaultSubstitute(pat);
+
+	FcResult result;
+	FcCharSet *cs;
+	FcFontSet *fs = FcFontSort(NULL, pat, FcTrue, &cs, &result);
+
+	FcFontSet *list = 0;
+	if (fs) {
+		list = FcFontSetCreate();
+		FcObjectSet *family = FcObjectSetCreate();
+		FcObjectSetAdd(family, FC_FAMILY);
+
+		for (u32 i = 0; i < fs->nfont; i++) {
+			FcPattern *font = FcFontRenderPrepare(NULL, pat, fs->fonts[i]);
+			if (!font) continue;
+
+			bool same = false;
+			for (u32 j = 0; j < list->nfont; j++) {
+				if (FcPatternEqualSubset(list->fonts[j], font, family)) {
+					same = true;
+					break;
+				}
+			}
+			if (same) FcPatternDestroy(font);
+			else FcFontSetAdd(list, font);
+		}
+		FcObjectSetDestroy(family);
+		if (!list->nfont) {
+			FcFontSetDestroy(list);
+			list = 0;
+		}
+		FcFontSetDestroy(fs);
+	}
+	FcPatternDestroy(pat);
+	if (cs) FcCharSetDestroy(cs);
+	return list;
+}
 
 Font *Font::createInstance()
 {
@@ -95,6 +153,18 @@ Font *Font::createInstance()
 	FcPatternDestroy(pat);
 	if (fs) FcFontSetDestroy(fs);
 
+	if (fontList) {
+		s8 boldNames[256];
+		Config::instance()->getOption("font-names-bold", boldNames, sizeof(boldNames));
+		fontListBold = createFontList(boldNames, pixel_size);
+	}
+
+	if (fontList) {
+		s8 italicNames[256];
+		Config::instance()->getOption("font-names-italic", italicNames, sizeof(italicNames));
+		fontListItalic = createFontList(italicNames, pixel_size);
+	}
+
 	if (fontList && fontList->nfont) return new Font();
 
 	if (unicodeMap) FcCharSetDestroy(unicodeMap);
@@ -111,12 +181,28 @@ Font::Font()
 	fontFlags = new u32[fontList->nfont];
 	memset(fontFaces, 0, sizeof(FT_Face) * fontList->nfont);
 
-	glyphCache = new Glyph *[256 * 256];
-	glyphCacheInited = new bool[256];
-	memset(glyphCacheInited, 0, sizeof(bool) * 256);
+	fontFacesBold = fontListBold ? new FT_Face[fontListBold->nfont] : 0;
+	fontFlagsBold = fontListBold ? new u32[fontListBold->nfont] : 0;
+	if (fontListBold) memset(fontFacesBold, 0, sizeof(FT_Face) * fontListBold->nfont);
+
+	fontFacesItalic = fontListItalic ? new FT_Face[fontListItalic->nfont] : 0;
+	fontFlagsItalic = fontListItalic ? new u32[fontListItalic->nfont] : 0;
+	if (fontListItalic) memset(fontFacesItalic, 0, sizeof(FT_Face) * fontListItalic->nfont);
+
+	glyphCache = new Glyph *[0x30000];
+	glyphCacheInited = new bool[0x300];
+	memset(glyphCacheInited, 0, sizeof(bool) * 0x300);
+
+	glyphCacheBold = new Glyph *[0x30000];
+	glyphCacheInitedBold = new bool[0x300];
+	memset(glyphCacheInitedBold, 0, sizeof(bool) * 0x300);
+
+	glyphCacheItalic = new Glyph *[0x30000];
+	glyphCacheInitedItalic = new bool[0x300];
+	memset(glyphCacheInitedItalic, 0, sizeof(bool) * 0x300);
 
 	FT_Init_FreeType(&ftlib);
-	openFont(0);
+	openFont(0, fontList, fontFaces, fontFlags);
 
 	FT_Face face = fontFaces[0];
 	if (face == (FT_Face)-1) return;
@@ -142,7 +228,6 @@ Font::Font()
 		mWidth = sizes[index].width;
 	}
 
-	if (!(face->face_flags & FT_FACE_FLAG_FIXED_WIDTH)) mWidth = MIN(mWidth, (mHeight + 1) / 2);
 
 	u32 width = 0;
 	Config::instance()->getOption("font-width", width);
@@ -170,30 +255,69 @@ Font::Font()
 Font::~Font()
 {
 	for (u32 i = 0; i < 256; i++) {
-		if (!glyphCacheInited[i]) continue;
-
-		for (u32 j = 0; j < 256; j++) {
-			if (glyphCache[i * 256 + j]) {
-				delete[] (u8 *)glyphCache[i * 256 + j];
+		if (glyphCacheInited[i]) {
+			for (u32 j = 0; j < 256; j++) {
+				if (glyphCache[i * 256 + j]) {
+					delete[] (u8 *)glyphCache[i * 256 + j];
+				}
+			}
+		}
+		if (glyphCacheInitedBold[i]) {
+			for (u32 j = 0; j < 256; j++) {
+				if (glyphCacheBold[i * 256 + j]) {
+					delete[] (u8 *)glyphCacheBold[i * 256 + j];
+				}
+			}
+		}
+		if (glyphCacheInitedItalic[i]) {
+			for (u32 j = 0; j < 256; j++) {
+				if (glyphCacheItalic[i * 256 + j]) {
+					delete[] (u8 *)glyphCacheItalic[i * 256 + j];
+				}
 			}
 		}
 	}
 
 	delete[] glyphCache;
 	delete[] glyphCacheInited;
+	delete[] glyphCacheBold;
+	delete[] glyphCacheInitedBold;
+	delete[] glyphCacheItalic;
+	delete[] glyphCacheInitedItalic;
 
 	for (u32 i = 0; i < fontList->nfont; i++) {
 		if (fontFaces[i] && fontFaces[i] != (FT_Face)-1) {
 			FT_Done_Face(fontFaces[i]);
 		}
 	}
-
 	delete[] fontFaces;
 	delete[] fontFlags;
+
+	if (fontFacesBold) {
+		for (u32 i = 0; i < fontListBold->nfont; i++) {
+			if (fontFacesBold[i] && fontFacesBold[i] != (FT_Face)-1) {
+				FT_Done_Face(fontFacesBold[i]);
+			}
+		}
+		delete[] fontFacesBold;
+		delete[] fontFlagsBold;
+	}
+
+	if (fontFacesItalic) {
+		for (u32 i = 0; i < fontListItalic->nfont; i++) {
+			if (fontFacesItalic[i] && fontFacesItalic[i] != (FT_Face)-1) {
+				FT_Done_Face(fontFacesItalic[i]);
+			}
+		}
+		delete[] fontFacesItalic;
+		delete[] fontFlagsItalic;
+	}
 
 	FT_Done_FreeType(ftlib);
 	FcCharSetDestroy(unicodeMap);
 	FcFontSetDestroy(fontList);
+	if (fontListBold) FcFontSetDestroy(fontListBold);
+	if (fontListItalic) FcFontSetDestroy(fontListItalic);
 	FcFini();
 }
 
@@ -214,11 +338,11 @@ void Font::showInfo(bool verbose)
 	printf("%s\n", family);
 }
 
-static void openFont(u32 index)
+static void openFont(u32 index, FcFontSet *list, FT_Face *faces, u32 *flags)
 {
-	if (index >= fontList->nfont) return;
+	if (index >= list->nfont) return;
 
-	FcPattern *pattern = fontList->fonts[index];
+	FcPattern *pattern = list->fonts[index];
 
 	FcChar8 *name = (FcChar8 *)"";
 	FcPatternGetString(pattern, FC_FILE, 0, &name);
@@ -255,71 +379,208 @@ static void openFont(u32 index)
 		load_flags |= FT_LOAD_TARGET_MONO;
 	}
 
-	fontFaces[index] = face;
-	fontFlags[index] = load_flags;
+	faces[index] = face;
+	flags[index] = load_flags;
 }
 
-static int fontIndex(u32 unicode)
+static int fontIndex(u32 unicode, FcFontSet *list)
 {
-	if (!FcCharSetHasChar(unicodeMap, unicode)) return -1;
+	if (!list) return -1;
 
-	FcCharSet *charset;
-	for (u32 i = 0; i < fontList->nfont; i++) {
-		FcPatternGetCharSet(fontList->fonts[i], FC_CHARSET, 0, &charset);
-		if (FcCharSetHasChar(charset, unicode)) return i;
+	if (unicode <= 0xffff) {
+		if (!FcCharSetHasChar(unicodeMap, unicode)) return -1;
+
+		FcCharSet *charset;
+		for (u32 i = 0; i < list->nfont; i++) {
+			FcPatternGetCharSet(list->fonts[i], FC_CHARSET, 0, &charset);
+			if (FcCharSetHasChar(charset, unicode)) return i;
+		}
+
+		return -1;
+	}
+
+	for (u32 i = 0; i < list->nfont; i++) {
+		FT_Face face = fontFaces[i];
+		if (!face || face == (FT_Face)-1) {
+			if (list == fontList) openFont(i, fontList, fontFaces, fontFlags);
+			else if (list == fontListBold) openFont(i, fontListBold, fontFacesBold, fontFlagsBold);
+			else if (list == fontListItalic) openFont(i, fontListItalic, fontFacesItalic, fontFlagsItalic);
+			else return -1;
+			face = (list == fontList) ? fontFaces[i] :
+				(list == fontListBold) ? fontFacesBold[i] : fontFacesItalic[i];
+		}
+		if (face && face != (FT_Face)-1 && FT_Get_Char_Index(face, (FT_ULong)unicode))
+			return i;
 	}
 
 	return -1;
 }
 
-Font::Glyph *Font::getGlyph(u32 unicode)
+Font::Glyph *Font::getGlyph(u32 unicode, bool bold, bool italic)
 {
-	if (unicode >= 256 * 256) return 0;
+	Glyph ***cache = &glyphCache;
+	bool *cacheInited = glyphCacheInited;
+	FcFontSet *list = fontList;
+	FT_Face *faces = fontFaces;
+	u32 *loadFlags = fontFlags;
+	bool needEmbolding = false;
+	bool needShear = false;
+	bool noCache = (unicode >= 0x30000);
 
-	if (!glyphCacheInited[unicode >> 8]) {
-		glyphCacheInited[unicode >> 8] = true;
-		memset(&glyphCache[unicode & 0xff00], 0, sizeof(Glyph *) * 256);
+	if (bold && italic) {
+			noCache = true;
+			int fi = fontIndex(unicode, fontListItalic);
+			if (fi >= 0) {
+				list = fontListItalic;
+				faces = fontFacesItalic;
+				loadFlags = fontFlagsItalic;
+				needEmbolding = true;
+			} else {
+				fi = fontIndex(unicode, fontListBold);
+				if (fi >= 0) {
+					list = fontListBold;
+					faces = fontFacesBold;
+					loadFlags = fontFlagsBold;
+					needShear = true;
+				} else {
+					fi = fontIndex(unicode, fontList);
+					if (fi == -1) return 0;
+					needEmbolding = true;
+					needShear = true;
+				}
+			}
+		} else if (bold) {
+		cache = &glyphCacheBold;
+		cacheInited = glyphCacheInitedBold;
+		if (fontListBold) {
+			list = fontListBold;
+			faces = fontFacesBold;
+			loadFlags = fontFlagsBold;
+		} else {
+			needEmbolding = true;
+		}
+	} else if (italic) {
+		cache = &glyphCacheItalic;
+		cacheInited = glyphCacheInitedItalic;
+		if (fontListItalic) {
+			list = fontListItalic;
+			faces = fontFacesItalic;
+			loadFlags = fontFlagsItalic;
+		} else {
+			needShear = true;
+		}
 	}
 
-	if (glyphCache[unicode]) return glyphCache[unicode];
+	if (!noCache) {
+		if (!cacheInited[unicode >> 8]) {
+			cacheInited[unicode >> 8] = true;
+			memset(&(*cache)[unicode & ~0xff], 0, sizeof(Glyph *) * 0x100);
+		}
+		if ((*cache)[unicode]) return (*cache)[unicode];
+	}
 
-	int i = fontIndex(unicode);
-	if (i == -1) return 0;
+	int i = fontIndex(unicode, list);
+	bool useFallback = false;
 
-	if (!fontFaces[i]) openFont(i);
-	if (fontFaces[i] == (FT_Face)-1) return 0;
+	if (i == -1) {
+		i = fontIndex(unicode, fontList);
+		if (i == -1) return 0;
+		useFallback = true;
+		if (bold) needEmbolding = true;
+		if (italic) needShear = true;
+	}
 
-	FT_Face face = fontFaces[i];
+	if (useFallback) {
+		if (!fontFaces[i]) openFont(i, fontList, fontFaces, fontFlags);
+		if (fontFaces[i] == (FT_Face)-1) return 0;
+	} else {
+		if (!faces[i]) openFont(i, list, faces, loadFlags);
+		if (faces[i] == (FT_Face)-1) return 0;
+	}
+
+	FT_Face face = useFallback ? fontFaces[i] : faces[i];
+	u32 flags = useFallback ? fontFlags[i] : loadFlags[i];
+
+	
 	FT_UInt index = FT_Get_Char_Index(face, (FT_ULong)unicode);
 	if (!index) return 0;
 
-	FT_Load_Glyph(face, index, FT_LOAD_RENDER | fontFlags[i]);
+	if ((needEmbolding || needShear) && (face->face_flags & FT_FACE_FLAG_SCALABLE))
+		flags |= FT_LOAD_NO_BITMAP;
+	FT_Load_Glyph(face, index, FT_LOAD_RENDER | flags);
+
+
+	if (needShear && !(face->face_flags & FT_FACE_FLAG_SCALABLE))
+		needShear = false;
+
 	FT_Bitmap &bitmap = face->glyph->bitmap;
+
+	s32 shearOffset = 0;
+	u32 extraWidth = 0;
+	if (needShear) {
+		shearOffset = (face->glyph->metrics.height >> 6) / 4;
+		if (shearOffset < 0) shearOffset = 0;
+		extraWidth = shearOffset;
+	}
 
 	u32 x, y, w, h, nx, ny, nw, nh;
 	x = y = 0;
-	w = nw = bitmap.width;
+	w = nw = bitmap.width + extraWidth;
 	h = nh = bitmap.rows;
 	Screen::instance()->rotateRect(x, y, nw, nh);
 
 	Glyph *glyph = (Glyph *)new u8[OFFSET(Glyph, pixmap) + nw * nh];
-	glyph->left = face->glyph->metrics.horiBearingX >> 6;
+	memset(glyph->pixmap, 0, nw * nh);
+	glyph->left = (face->glyph->metrics.horiBearingX >> 6) - (s32)extraWidth;
 	glyph->top = mHeight - 1 + (face->size->metrics.descender >> 6) - (face->glyph->metrics.horiBearingY >> 6);
-	glyph->width = face->glyph->metrics.width >> 6;
+	glyph->width = (face->glyph->metrics.width >> 6) + extraWidth;
 	glyph->height = face->glyph->metrics.height >> 6;
 	glyph->pitch = nw;
 
 	u8 *buf = bitmap.buffer;
 	for (y = 0; y < h; y++, buf += bitmap.pitch) {
+		s32 shearShift = 0;
+		if (needShear) {
+			shearShift = shearOffset * ((s32)h - 1 - (s32)y) / ((s32)h - 1);
+			if (shearShift < 0) shearShift = 0;
+			if (shearShift > (s32)extraWidth) shearShift = extraWidth;
+		}
+
 		for (x = 0; x < w; x++) {
 			nx = x, ny = y;
 			Screen::instance()->rotatePoint(w, h, nx, ny);
 
-			glyph->pixmap[ny * nw + nx] =
-				(bitmap.pixel_mode == FT_PIXEL_MODE_MONO) ? ((buf[(x >> 3)] & (0x80 >> (x & 7))) ? 0xff : 0) : buf[x];
+			if (x < extraWidth) continue;
+
+			u8 val;
+			s32 srcX = (s32)(x - extraWidth) - shearShift;
+			if (srcX < 0 || srcX >= (s32)bitmap.width) {
+				val = 0;
+			} else {
+				val = (bitmap.pixel_mode == FT_PIXEL_MODE_MONO) ?
+					((buf[(srcX >> 3)] & (0x80 >> (srcX & 7))) ? 0xff : 0) : buf[srcX];
+			}
+
+			glyph->pixmap[ny * nw + nx] = val;
 		}
 	}
 
-	glyphCache[unicode] = glyph;
+	if (needEmbolding) {
+		for (y = 0; y < nh; y++) {
+			for (x = nw - 1; x > 0; x--) {
+				u32 idx = y * nw + x;
+				u16 blended = glyph->pixmap[idx] + (glyph->pixmap[idx - 1] / 2);
+				glyph->pixmap[idx] = blended > 255 ? 255 : (u8)blended;
+			}
+		}
+	}
+
+	if (!noCache) (*cache)[unicode] = glyph;
 	return glyph;
+}
+
+s32 Font::glyphWidth(u32 unicode)
+{
+	Glyph *g = getGlyph(unicode);
+	return g ? g->width : 0;
 }

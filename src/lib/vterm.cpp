@@ -205,7 +205,7 @@ void VTerm::resize(u16 w, u16 h)
 	}
 
 	if (new_max_width > max_width || new_max_height > max_height) {
-		u16 *new_text = new u16[new_max_width * (history_lines + new_max_height)];
+		u32 *new_text = new u32[new_max_width * (history_lines + new_max_height)];
 		CharAttr *new_attrs = new CharAttr[new_max_width * (history_lines + new_max_height)];
 
 		if (text) {
@@ -416,8 +416,7 @@ void VTerm::input(const u8 *buf, u32 count)
 
 void VTerm::do_normal_char()
 {
-	if (cur_char > 0xffff) cur_char = 0xfffd;
-
+	
 	s32 cw = charWidth(cur_char);
 	if (cw <= 0) return;
 
@@ -552,7 +551,7 @@ void VTerm::expose(u16 x, u16 y, u16 w, u16 h)
 
 		CharAttr attr = attrs[yp + startx];
 		bool dws[width];
-		u16 codes[width], num = 0;
+		u32 codes[width], num = 0;
 		u16 cur, start = startx;
 
 		for (cur = startx; cur <= endx; cur++) {

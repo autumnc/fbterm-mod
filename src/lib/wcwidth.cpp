@@ -309,10 +309,17 @@ int mk_wcswidth_cjk(const wchar_t *pwcs, size_t n)
 }
 
 #include "vterm.h"
+#include "../font.h"
 
 bool VTerm::ambiguous_wide = false;
 
 s32 VTerm::charWidth(u32 ucs)
 {
-	return ambiguous_wide ? mk_wcwidth_cjk(ucs) : mk_wcwidth(ucs);
+	s32 w = ambiguous_wide ? mk_wcwidth_cjk(ucs) : mk_wcwidth(ucs);
+	if (w == 1 && Font::instance()) {
+		s32 gw = Font::instance()->glyphWidth(ucs);
+		if (gw > 0 && gw > (s32)(Font::instance()->width() * 13 / 10))
+			w = 2;
+	}
+	return w;
 }

@@ -20,6 +20,7 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/select.h>
 #include "config.h"
 #include "fbio.h"
 

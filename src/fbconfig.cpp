@@ -45,7 +45,7 @@ Config::Config()
 	}
 
 	s8 name[64];
-	snprintf(name, sizeof(name), "%s/%s", home, ".fbtermrc");
+	snprintf(name, sizeof(name), "%s/%s", home, ".fbterm-modrc");
 
 	checkConfigFile(name);
 
@@ -163,7 +163,7 @@ void Config::parseOption(s8 *str)
 void Config::checkConfigFile(const s8 *name)
 {
 	static const s8 defaultConfig[] =
-		"# Configuration for FbTerm\n"
+		"# Configuration for fbterm-mod\n"
 		"\n"
 		"# Lines starting with '#' are ignored.\n"
 		"# Note that end-of-line comments are NOT supported, comments must be on a line of their own.\n"
@@ -172,6 +172,12 @@ void Config::checkConfigFile(const s8 *name)
 		"# and using a fixed width font as the first is strongly recommended\n"
 		"font-names=mono\n"
 		"font-size=12\n"
+		"\n"
+		"# bold font family names (optional), if not set synthetic bold will be used\n"
+		"#font-names-bold=\n"
+		"\n"
+		"# italic font family names (optional), if not set synthetic italic will be used\n"
+		"#font-names-italic=\n"
 		"\n"
 		"# force font width (and/or height), usually for non-fixed width fonts\n"
 		"# legal value format: n (fw_new = n), +n (fw_new = fw_old + n), -n (fw_new = fw_old - n)\n"
@@ -292,7 +298,7 @@ bool Config::parseArgs(s32 argc, s8 **argv)
 				"                  list            display available VESA video modes\n"
 #endif
 				"\n"
-				"See comments in ~/.fbtermrc for details of these options.\n"
+				"See comments in ~/.fbterm-modrc for details of these options.\n"
 			);
 			return false;
 
