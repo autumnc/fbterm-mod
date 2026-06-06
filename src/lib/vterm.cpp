@@ -31,11 +31,6 @@ VTerm::CharAttr VTerm::normal_char_attr()
 {
 	CharAttr a(char_attr);
 
-	if (a.underline && cur_underline_color != -1) {
-		a.underline = false;
-		a.fcolor = cur_underline_color;
-	}
-
 	if (a.intensity == 0 && cur_halfbright_color != -1) {
 		a.intensity = 1;
 		a.fcolor = cur_halfbright_color;
