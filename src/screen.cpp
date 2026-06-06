@@ -281,10 +281,8 @@ void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold,
 	Font::Glyph *glyph = (Font::Glyph *)Font::instance()->getGlyph(code, bold, italic);
 	if (!glyph) {
 		fillRect(x, y, w, h, bc);
-		return;
-	}
-
-	s32 top = glyph->top;
+	} else {
+		s32 top = glyph->top;
 	if (top < 0) top = 0;
 
 	s32 left = glyph->left;
@@ -311,7 +309,7 @@ void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold,
 
 	x += left;
 	y += top;
-	if (x >= mWidth || y >= mHeight || !width || !height) return;
+	if (x < mWidth && y < mHeight && width && height) {
 
 	u32 nwidth = width, nheight = height;
 	rotateRect(x, y, nwidth, nheight);
@@ -333,6 +331,8 @@ void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold,
 	for (; nheight--; y++, pixmap += glyph->pitch) {
 		if ((mScrollType == YWrap) && y > mOffsetMax) y -= mOffsetMax + 1;
 		(this->*draw)(x, y, nwidth, fc, bc, pixmap);
+	}
+	}
 	}
 
 	if (underline) {
