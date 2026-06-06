@@ -525,13 +525,8 @@ void VTerm::set_display_attr()
 		case 30 ... 37:
 			char_attr.fcolor = param[n] % 10;
 			break;
-		case 38:
-			char_attr.fcolor = cur_fcolor;
-			char_attr.underline = true;
-			break;
 		case 39:
 			char_attr.fcolor = cur_fcolor;
-			char_attr.underline = false;
 			break;
 		case 40 ... 47:
 			char_attr.bcolor = param[n] % 10;
