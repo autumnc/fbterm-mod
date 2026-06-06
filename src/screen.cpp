@@ -274,8 +274,9 @@ void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold,
 	if (x >= mWidth || y >= mHeight) return;
 
 	s32 w = (dw ? FW(2) : FW(1)), h = FH(1);
-	if (x + w > mWidth) w = mWidth - x;
-	if (y + h > mHeight) h = mHeight - y;
+	u32 cellX = x, cellY = y, cellW = w, cellH = h;
+	if (x + w > mWidth) { w = mWidth - x; cellW = w; }
+	if (y + h > mHeight) { h = mHeight - y; cellH = h; }
 
 	Font::Glyph *glyph = (Font::Glyph *)Font::instance()->getGlyph(code, bold, italic);
 	if (!glyph) {
@@ -335,13 +336,10 @@ void Screen::drawGlyph(u32 x, u32 y, u8 fc, u8 bc, u32 code, bool dw, bool bold,
 	}
 
 	if (underline) {
-		u32 uy = (y + mHeight) - 2;
-		if (uy >= mHeight) uy = mHeight - 2;
-		fillRect(x - left, y + top + height, w, 1, fc);
+		fillRect(cellX, cellY + cellH - 2, cellW, 1, fc);
 	}
 	if (strikethrough) {
-		u32 sy = (y + mHeight) / 2;
-		fillRect(x - left, y + top + height / 2, w, 1, fc);
+		fillRect(cellX, cellY + cellH / 2, cellW, 1, fc);
 	}
 }
 
