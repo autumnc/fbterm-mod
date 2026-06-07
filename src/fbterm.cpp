@@ -247,12 +247,36 @@ void FbTerm::processSysKey(u32 key)
 		manager->switchShell(key - CTRL_ALT_1);
 		break;
 
+	case SHIFT_UP:
+		if (manager->activeShell()) manager->activeShell()->keyInput((s8 *)"\033[1;2A", 7);
+		break;
+
+	case SHIFT_DOWN:
+		if (manager->activeShell()) manager->activeShell()->keyInput((s8 *)"\033[1;2B", 7);
+		break;
+
 	case SHIFT_LEFT:
-		manager->prevShell();
+		if (manager->activeShell()) manager->activeShell()->keyInput((s8 *)"\033[1;2D", 7);
 		break;
 
 	case SHIFT_RIGHT:
-		manager->nextShell();
+		if (manager->activeShell()) manager->activeShell()->keyInput((s8 *)"\033[1;2C", 7);
+		break;
+
+	case CTRL_UP:
+		if (manager->activeShell()) manager->activeShell()->keyInput((s8 *)"\033[1;5A", 7);
+		break;
+
+	case CTRL_DOWN:
+		if (manager->activeShell()) manager->activeShell()->keyInput((s8 *)"\033[1;5B", 7);
+		break;
+
+	case CTRL_LEFT:
+		if (manager->activeShell()) manager->activeShell()->keyInput((s8 *)"\033[1;5D", 7);
+		break;
+
+	case CTRL_RIGHT:
+		if (manager->activeShell()) manager->activeShell()->keyInput((s8 *)"\033[1;5C", 7);
 		break;
 
 	case CTRL_ALT_F7 ... CTRL_ALT_F12:
