@@ -569,7 +569,7 @@ Font::Glyph *Font::getGlyph(u32 unicode, bool bold, bool italic)
 		for (y = 0; y < nh; y++) {
 			for (x = nw - 1; x > 0; x--) {
 				u32 idx = y * nw + x;
-				u16 blended = glyph->pixmap[idx] + (glyph->pixmap[idx - 1] / 2);
+				u16 blended = glyph->pixmap[idx] + (glyph->pixmap[idx - 1] * 3 / 4);
 				glyph->pixmap[idx] = blended > 255 ? 255 : (u8)blended;
 			}
 		}
