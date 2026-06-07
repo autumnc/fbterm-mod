@@ -57,6 +57,30 @@ void Screen::setPalette(const Color *palette)
 		}
 	}
 
+
+	if (mHasCustomBackground) {
+		u8 r = mCustomBackgroundColor.red;
+		u8 g = mCustomBackgroundColor.green;
+		u8 b = mCustomBackgroundColor.blue;
+		switch (mBitsPerPixel) {
+		case 8:
+			mCustomBackgroundPixel = ((r + g + b) / 3) & 0xff;
+			mCustomBackgroundPixel |= mCustomBackgroundPixel << 8;
+			mCustomBackgroundPixel |= mCustomBackgroundPixel << 16;
+			break;
+		case 15:
+			mCustomBackgroundPixel = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+			mCustomBackgroundPixel |= mCustomBackgroundPixel << 16;
+			break;
+		case 16:
+			mCustomBackgroundPixel = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+			mCustomBackgroundPixel |= mCustomBackgroundPixel << 16;
+			break;
+		default:
+			mCustomBackgroundPixel = (r << 16) | (g << 8) | b;
+			break;
+		}
+	}
 	setupPalette(false);
 	eraseMargin(true, mRows);
 }

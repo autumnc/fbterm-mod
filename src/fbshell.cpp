@@ -315,18 +315,59 @@ u16 VTerm::init_history_lines()
 	return val;
 }
 
-u8 VTerm::init_default_color(bool foreground)
+u8 VTerm::init_default_color(bool foreground, bool &direct)
 {
+	s8 str[16];
+	const s8 *key = foreground ? "color-foreground" : "color-background";
+	Config::instance()->getOption(key, str, sizeof(str));
+
+	// hex color: #RRGGBB
+	if (str[0] == '#' && strlen(str) == 7) {
+		u8 rgb[3] = {0, 0, 0};
+		bool valid = true;
+		for (int i = 0; i < 6 && valid; i++) {
+			char c = str[i + 1];
+			u8 v;
+			if (c >= '0' && c <= '9') v = c - '0';
+			else if (c >= 'A' && c <= 'F') v = c - 'A' + 10;
+			else if (c >= 'a' && c <= 'f') v = c - 'a' + 10;
+			else valid = false;
+			rgb[i / 2] = (rgb[i / 2] << 4) | v;
+		}
+
+		if (valid) {
+			direct = true;
+			u8 idx = allocDirectColor(rgb[0], rgb[1], rgb[2]);
+
+			// store for re-allocation in future VTerm instances
+			if (foreground) {
+				s_has_default_fg_direct = true;
+				s_default_fg_direct.red = rgb[0];
+				s_default_fg_direct.green = rgb[1];
+				s_default_fg_direct.blue = rgb[2];
+			} else {
+				s_has_default_bg_direct = true;
+				s_default_bg_direct.red = rgb[0];
+				s_default_bg_direct.green = rgb[1];
+				s_default_bg_direct.blue = rgb[2];
+			}
+
+			return idx;
+		}
+	}
+
+	// palette index
+	direct = false;
 	u32 color;
 
 	if (foreground) {
 		color = 7;
 		Config::instance()->getOption("color-foreground", color);
-		if (color > 7) color = 7;
+		if (color > 255) color = 7;
 	} else {
 		color = 0;
 		Config::instance()->getOption("color-background", color);
-		if (color > 7) color = 0;
+		if (color > 255) color = 0;
 	}
 
 	return color;
@@ -538,6 +579,13 @@ void FbShell::request(RequestType type,  u32 val)
 
 		if (active) {
 			screen->setPalette(mPalette);
+
+		// set custom background if default bg is a direct color
+		if (hasDefaultDirectBg()) {
+			screen->setBackgroundColor(&defaultDirectBgRgb());
+		} else {
+			screen->setBackgroundColor(0);
+		}
 		}
 		break;
 
@@ -547,6 +595,13 @@ void FbShell::request(RequestType type,  u32 val)
 
 		if (active) {
 			screen->setPalette(defaultPalette);
+
+		// set custom background if default bg is a direct color
+		if (hasDefaultDirectBg()) {
+			screen->setBackgroundColor(&defaultDirectBgRgb());
+		} else {
+			screen->setBackgroundColor(0);
+		}
 		}
 		break;
 
@@ -582,6 +637,13 @@ void FbShell::switchVt(bool enter, FbShell *peer)
 
 	if (enter) {
 		screen->setPalette(mPaletteChanged ? mPalette : defaultPalette);
+
+		// set custom background if default bg is a direct color
+		if (hasDefaultDirectBg()) {
+			screen->setBackgroundColor(&defaultDirectBgRgb());
+		} else {
+			screen->setBackgroundColor(0);
+		}
 		modeChanged(AllModes);
 		reportCursor();
 	} else if (!peer) {
@@ -592,6 +654,13 @@ void FbShell::switchVt(bool enter, FbShell *peer)
 
 		enableCursor(false);
 		screen->setPalette(defaultPalette);
+
+		// set custom background if default bg is a direct color
+		if (hasDefaultDirectBg()) {
+			screen->setBackgroundColor(&defaultDirectBgRgb());
+		} else {
+			screen->setBackgroundColor(0);
+		}
 	}
 }
 

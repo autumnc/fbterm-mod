@@ -184,7 +184,7 @@ void Config::checkConfigFile(const s8 *name)
 		"#font-width=\n"
 		"#font-height=\n"
 		"\n"
-		"# default color of foreground/background text\n"
+		"# default color of foreground/background text (palette index or #RRGGBB hex)\n"
 		"# available colors: 0 = black, 1 = red, 2 = green, 3 = brown, 4 = blue, 5 = magenta, 6 = cyan, 7 = white\n"
 		"color-foreground=7\n"
 		"color-background=0\n"

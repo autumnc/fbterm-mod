@@ -30,6 +30,11 @@ static_assert(sizeof(VTerm::CharAttr) == 4, "CharAttr must remain 4 bytes");
 
 VTerm::CharAttr VTerm::default_char_attr = { 0, 0, 1, 0, 0, 0, 0, 0, VTerm::CharAttr::Single, 0, 0 };
 
+Color VTerm::s_default_fg_direct = {0, 0, 0};
+Color VTerm::s_default_bg_direct = {0, 0, 0};
+bool VTerm::s_has_default_fg_direct = false;
+bool VTerm::s_has_default_bg_direct = false;
+
 VTerm::CharAttr VTerm::normal_char_attr()
 {
 	CharAttr a(char_attr);
@@ -93,9 +98,28 @@ VTerm::VTerm(u16 w, u16 h)
 		inited = true;
 		init_state();
 		history_lines = init_history_lines();
-		default_char_attr.fcolor = init_default_color(true);
-		default_char_attr.bcolor = init_default_color(false);
+		{
+			bool direct_fg, direct_bg;
+			default_char_attr.fcolor = init_default_color(true, direct_fg);
+			default_char_attr.direct_fg = direct_fg;
+			default_char_attr.bcolor = init_default_color(false, direct_bg);
+			default_char_attr.direct_bg = direct_bg;
+		}
 		ambiguous_wide = init_ambiguous_wide();
+	}
+
+	// re-allocate default direct colors in this instance
+	default_char_attr.direct_fg = false;
+	default_char_attr.direct_bg = false;
+	if (s_has_default_fg_direct) {
+		default_char_attr.fcolor = allocDirectColor(
+			s_default_fg_direct.red, s_default_fg_direct.green, s_default_fg_direct.blue);
+		default_char_attr.direct_fg = true;
+	}
+	if (s_has_default_bg_direct) {
+		default_char_attr.bcolor = allocDirectColor(
+			s_default_bg_direct.red, s_default_bg_direct.green, s_default_bg_direct.blue);
+		default_char_attr.direct_bg = true;
 	}
 
 	text = 0;
@@ -848,10 +872,16 @@ u8 VTerm::allocDirectColor(u8 r, u8 g, u8 b)
 		return mDirectColorCount++;
 	}
 
+	// wrap around, preserving reserved default direct colors
 	mDirectColorCount = 0;
-	mDirectColors[0].red = r;
-	mDirectColors[0].green = g;
-	mDirectColors[0].blue = b;
-	mDirectColorCount = 1;
-	return 0;
+	if (s_has_default_fg_direct) {
+		mDirectColors[mDirectColorCount++] = s_default_fg_direct;
+	}
+	if (s_has_default_bg_direct) {
+		mDirectColors[mDirectColorCount++] = s_default_bg_direct;
+	}
+	mDirectColors[mDirectColorCount].red = r;
+	mDirectColors[mDirectColorCount].green = g;
+	mDirectColors[mDirectColorCount].blue = b;
+	return mDirectColorCount++;
 }
