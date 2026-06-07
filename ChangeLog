@@ -1,22 +1,3 @@
-2016-02-21 version 1.8
-	* all:
-	initial fbterm-mod fork
-
-	* configure.ac src/Makefile.am:
-	set TERM to 'fbterm' instead of 'linux' by default
-
-	* fbconfig.cpp fbterm.cpp:
-	added configurable colour palette support
-
-	* font.cpp:
-	hardcode FreeType hinting level to normal
-
-	* input.cpp:
-	fixed unexpected character appears when toggling input method with CTRL+SPACE
-
-	* fbterm.cpp input.cpp:
-	avoid vconsole switching shortcuts interfering with terminal input
-
 2026-06-05 version 1.9
 	* font.cpp fbconfig.cpp fbconfig.h screen.cpp screen.h fbshell.cpp:
 	added bold/italic rendering with synthetic emboldening and italic shearing
@@ -62,6 +43,25 @@
 	* terminfo/fbterm:
 	added kind/kri/kLFT/kRIT extended key capabilities
 	added RGB true color capability
+
+2016-02-21 version 1.8
+	* all:
+	initial fbterm-mod fork
+
+	* configure.ac src/Makefile.am:
+	set TERM to 'fbterm' instead of 'linux' by default
+
+	* fbconfig.cpp fbterm.cpp:
+	added configurable colour palette support
+
+	* font.cpp:
+	hardcode FreeType hinting level to normal
+
+	* input.cpp:
+	fixed unexpected character appears when toggling input method with CTRL+SPACE
+
+	* fbterm.cpp input.cpp:
+	avoid vconsole switching shortcuts interfering with terminal input
 
 2010-10-5 version 1.7
 	* vterm.cpp charsetmap.cpp:
