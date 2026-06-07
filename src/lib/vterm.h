@@ -98,6 +98,11 @@ public:
 	static const u8 NR_DIRECT_COLORS = 64;
 	const Color* directColorTable() const { return mDirectColors; }
 
+	static bool hasDefaultDirectFg() { return s_has_default_fg_direct; }
+	static bool hasDefaultDirectBg() { return s_has_default_bg_direct; }
+	static const Color& defaultDirectFgRgb() { return s_default_fg_direct; }
+	static const Color& defaultDirectBgRgb() { return s_default_bg_direct; }
+
 protected:
 	virtual void drawChars(CharAttr attr, u16 x, u16 y, u16 w, u16 num, u32 *chars, bool *dws) = 0;
 	virtual bool moveChars(u16 sx, u16 sy, u16 dx, u16 dy, u16 w, u16 h) { return false; }
@@ -190,9 +195,8 @@ private:
 
 	static void init_state();
 	static u16 init_history_lines();
-	static u8 init_default_color(bool foreground);
+	u8 init_default_color(bool foreground, bool &direct);
 	static bool init_ambiguous_wide();
-
 	typedef enum {
 		ESnormal = 0, ESesc, ESsquare, ESnonstd, ESpercent, EScharset, EShash, ESfunckey, ESkeep
 	} EscapeState;
@@ -285,6 +289,11 @@ private:
 	Color mDirectColors[NR_DIRECT_COLORS];
 	u8 mDirectColorCount;
 	u8 allocDirectColor(u8 r, u8 g, u8 b);
+
+	static Color s_default_fg_direct;
+	static Color s_default_bg_direct;
+	static bool s_has_default_fg_direct;
+	static bool s_has_default_bg_direct;
 };
 
 #endif

@@ -264,7 +264,39 @@ void Screen::adjustOffset(u32 &x, u32 &y)
 
 void Screen::fillRect(u32 x, u32 y, u32 w, u32 h, u8 color)
 {
-	fillRectPixel(x, y, w, h, mFillColors[color]);
+	u32 pixel = (color == 0 && mHasCustomBackground) ? mCustomBackgroundPixel : mFillColors[color];
+	fillRectPixel(x, y, w, h, pixel);
+}
+
+void Screen::setBackgroundColor(const Color *color)
+{
+	if (color) {
+		mHasCustomBackground = true;
+		mCustomBackgroundColor = *color;
+
+		if (mBitsPerPixel == 0) return;
+		u8 r = color->red, g = color->green, b = color->blue;
+		switch (mBitsPerPixel) {
+		case 8:
+			mCustomBackgroundPixel = ((r + g + b) / 3) & 0xff;
+			mCustomBackgroundPixel |= mCustomBackgroundPixel << 8;
+			mCustomBackgroundPixel |= mCustomBackgroundPixel << 16;
+			break;
+		case 15:
+			mCustomBackgroundPixel = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+			mCustomBackgroundPixel |= mCustomBackgroundPixel << 16;
+			break;
+		case 16:
+			mCustomBackgroundPixel = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+			mCustomBackgroundPixel |= mCustomBackgroundPixel << 16;
+			break;
+		default:
+			mCustomBackgroundPixel = (r << 16) | (g << 8) | b;
+			break;
+		}
+	} else {
+		mHasCustomBackground = false;
+	}
 }
 
 void Screen::fillRectPixel(u32 x, u32 y, u32 w, u32 h, u32 pixel)

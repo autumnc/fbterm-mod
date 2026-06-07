@@ -55,6 +55,7 @@ public :
 	bool move(u16 scol, u16 srow, u16 dcol, u16 drow, u16 w, u16 h);
 	void setPalette(const Color *palette);
 	void setDirectColorTable(const Color *table) { mDirectColorTable = table; }
+	void setBackgroundColor(const Color *color);
 	
 	void enableScroll(bool enable) { mScrollEnable = enable; }
 
@@ -112,6 +113,9 @@ private:
 	bool mScrollEnable;
 	const Color *mDirectColorTable;
 	u32 mFillColors[NR_COLORS];
+	bool mHasCustomBackground;
+	u32 mCustomBackgroundPixel;
+	Color mCustomBackgroundColor;
 
 	RenderColor resolveColor(u8 index, bool direct) const;
 	void fillRectPixel(u32 x, u32 y, u32 w, u32 h, u32 pixel);
