@@ -273,6 +273,7 @@ private:
 
 	static CharAttr default_char_attr;
 	u8 cur_fcolor, cur_bcolor;
+	bool cur_fcolor_direct, cur_bcolor_direct;
 	s8 cur_underline_color, cur_halfbright_color;
 
 	// action parameters

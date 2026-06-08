@@ -472,13 +472,17 @@ void FbShell::updateCursor()
 	case CurNone:
 		break;
 
-	case CurUnderline:
-		screen->fillRect(FW(mCursor.x), FH(mCursor.y + 1) - 1, FW(1), 1, mCursor.showed ? mCursor.attr.fcolor : mCursor.attr.bcolor);
+	case CurUnderline: {
+		u8 color = mCursor.showed ? mCursor.attr.fcolor : mCursor.attr.bcolor;
+		bool direct = mCursor.showed ? mCursor.attr.direct_fg : mCursor.attr.direct_bg;
+		RenderColor rc = screen->resolveColor(color, direct);
+		screen->fillRectPixel(FW(mCursor.x), FH(mCursor.y + 1) - 1, FW(1), 1, rc.pixel);
 		if (mImProxy) {
 			Rectangle rect = { FW(mCursor.x), FH(mCursor.y + 1) - 1, FW(1), 1 };
 			mImProxy->redrawImWin(rect);
 		}
 		break;
+		}
 
 	default: {
 		bool dw = (mCursor.attr.type != CharAttr::Single);

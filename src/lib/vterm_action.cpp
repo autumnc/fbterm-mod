@@ -527,12 +527,14 @@ void VTerm::set_display_attr()
 			break;
 		case 39:
 			char_attr.fcolor = cur_fcolor;
+			char_attr.direct_fg = cur_fcolor_direct;
 			break;
 		case 40 ... 47:
 			char_attr.bcolor = param[n] % 10;
 			break;
 		case 49:
 			char_attr.bcolor = cur_bcolor;
+			char_attr.direct_bg = cur_bcolor_direct;
 			break;
 		case 38:
 			if (n + 2 <= npar && param[n + 1] == 5) {
@@ -647,6 +649,8 @@ void VTerm::linux_specific()
 	case 8:
 		cur_fcolor = char_attr.fcolor;
 		cur_bcolor = char_attr.bcolor;
+		cur_fcolor_direct = char_attr.direct_fg;
+		cur_bcolor_direct = char_attr.direct_bg;
 		break;
 	case 9:
 		request(Blank, param[1]);

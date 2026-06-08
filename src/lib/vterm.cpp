@@ -42,6 +42,7 @@ VTerm::CharAttr VTerm::normal_char_attr()
 	if (a.intensity == 0 && cur_halfbright_color != -1) {
 		a.intensity = 1;
 		a.fcolor = cur_halfbright_color;
+		a.direct_fg = 0;
 	}
 
 	return a;
@@ -49,10 +50,19 @@ VTerm::CharAttr VTerm::normal_char_attr()
 
 VTerm::CharAttr VTerm::erase_char_attr()
 {
-	CharAttr a(default_char_attr);
+	CharAttr a;
 
-	a.fcolor = cur_fcolor;
-	a.bcolor = cur_bcolor;
+	a.fcolor = char_attr.fcolor;
+	a.bcolor = char_attr.bcolor;
+	a.intensity = 1;
+	a.italic = 0;
+	a.underline = 0;
+	a.blink = 0;
+	a.reverse = 0;
+	a.strikethrough = 0;
+	a.type = CharAttr::Single;
+	a.direct_fg = char_attr.direct_fg;
+	a.direct_bg = char_attr.direct_bg;
 
 	return a;
 }
@@ -172,6 +182,8 @@ void VTerm::reset()
 	char_attr = s_char_attr = default_char_attr;
 	cur_fcolor = default_char_attr.fcolor;
 	cur_bcolor = default_char_attr.bcolor;
+	cur_fcolor_direct = default_char_attr.direct_fg;
+	cur_bcolor_direct = default_char_attr.direct_bg;
 	cur_underline_color = -1;
 	cur_halfbright_color = -1;
 
