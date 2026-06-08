@@ -51,11 +51,8 @@ VTerm::CharAttr VTerm::erase_char_attr()
 {
 	CharAttr a(default_char_attr);
 
-	a.fcolor = char_attr.fcolor;
-	a.bcolor = char_attr.bcolor;
-	a.blink = char_attr.blink;
-	a.direct_fg = char_attr.direct_fg;
-	a.direct_bg = char_attr.direct_bg;
+	a.fcolor = cur_fcolor;
+	a.bcolor = cur_bcolor;
 
 	return a;
 }
