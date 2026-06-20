@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include "vterm.h"
 
-// #define SIXEL_DEBUG 1
+#define SIXEL_DEBUG 1
 
 #ifdef SIXEL_DEBUG
 static FILE *dbg = 0;
