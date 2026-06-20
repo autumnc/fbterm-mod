@@ -887,6 +887,8 @@ void VTerm::free_pixmap(u32 idx)
 		free(pixmaps[idx]);
 		pixmaps[idx] = 0;
 	}
+	if (idx < max_width * (u32)(history_lines + max_height))
+		attrs[idx].has_pixmap = 0;
 }
 
 void VTerm::free_row_pixmaps(u16 y)
