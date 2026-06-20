@@ -110,6 +110,8 @@ Screen::Screen()
 	mDirty = false;
 	mFbFd = -1;
 	mPalette = 0;
+	mHasCustomBackground = false;
+	memset(mFillColors, 0, sizeof(mFillColors));
 	mDirectColorTable = 0;
 
 	u32 type = Rotate0;
@@ -201,12 +203,15 @@ bool Screen::move(u16 scol, u16 srow, u16 dcol, u16 drow, u16 w, u16 h)
 
 void Screen::eraseMargin(bool top, u16 h)
 {
+	// Margins must always use palette black, never custom background
+	u32 bg = mFillColors[0];
+
 	if (mWidth % FW(1)) {
-		fillRect(FW(mCols), top ? 0 : FH(mRows - h), mWidth % FW(1), FH(h), 0);
+		fillRectPixel(FW(mCols), top ? 0 : FH(mRows - h), mWidth % FW(1), FH(h), bg);
 	}
 
 	if (mHeight % FH(1)) {
-		fillRect(0, FH(mRows), mWidth, mHeight % FH(1), 0);
+		fillRectPixel(0, FH(mRows), mWidth, mHeight % FH(1), bg);
 	}
 }
 
