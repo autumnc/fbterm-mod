@@ -1,3 +1,34 @@
+2026-06-20 version 1.14
+	* src/screen.h src/screen.cpp src/fbdev.cpp src/screen_render.cpp
+	src/screen_sixel.cpp configure.ac src/Makefile.am:
+	added ARM NEON SIMD optimizations for sixel rendering (vld4/vst1q/vbsl)
+	and framebuffer fill (vdup/vst1q), configurable via --enable-neon
+	added double buffering with system memory back buffer and vsync support
+	(FBIO_WAITFORVSYNC); swap at readyRead/updateCursor/redraw boundaries
+	added 4-pixel batch processing in drawX/draw8 macros with __builtin_prefetch
+	added precomputed alpha blending deltas in drawX macros
+	added RenderColor inline RGB to eliminate pointer dereference per pixel
+	added adjustOffset call in drawSixelCell for YPan/YWrap scroll modes
+
+	* src/lib/vterm_sixel.cpp:
+	fixed sixel_attr overwriting canvas height to 6 pixels, rejecting all
+	data beyond first row (root cause of truncated single-line sixel display)
+	fixed sixel_repeat counter overflow causing freeze from excessive digits
+	fixed sixel_nl height growth beyond allocated pixmap (heap overflow)
+	fixed calloc/realloc failure NULL pointer dereference (crash on OOM)
+	fixed integer overflow in allocation sizes and param parsing
+	fixed auto-scroll infinite loop when image extends past scroll bottom
+	fixed free_pixmap not clearing has_pixmap flag (blank cells after scroll)
+
+	* src/screen.cpp src/screen.h:
+	fixed initDoubleBuffer using visible height instead of total fb size
+	(finfo.smem_len), causing heap overflow in YPan/YWrap scroll modes
+	fixed eraseMargin using custom background color instead of palette black
+	fixed mFillColors[0] uninitialized, causing intermittent blue margins
+
+	* src/improxy.cpp:
+	fixed IM display lag: added swapBuffers call after FillRect/DrawText
+
 2026-06-20 version 1.13
 	* src/lib/vterm_sixel.cpp src/lib/vterm.h src/lib/vterm.cpp
 	src/lib/vterm_states.cpp src/lib/vterm_action.cpp:
