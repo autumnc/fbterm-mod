@@ -236,6 +236,7 @@ void ImProxy::sendDisconnect()
 
 void ImProxy::readyRead(s8 *buf, u32 len)
 {
+	bool rendered = false;
 	for (s8 *end = buf + len; buf < end && MSG(buf)->len && MSG(buf)->len <= (end - buf); buf += MSG(buf)->len) {
 		if (mMsgWaitState == WaitingMessage && mMsgWaitType == MSG(buf)->type) mMsgWaitState = GotMessage;
 		if (!mConnected && MSG(buf)->type != Connect) continue;
@@ -264,12 +265,14 @@ void ImProxy::readyRead(s8 *buf, u32 len)
 		case FillRect:
 			if (addWinMsg(MSG(buf)) && FbShellManager::instance()->activeShell() == mShell) {
 				doFillRect(MSG(buf));
+				rendered = true;
 			}
 			break;
 
 		case DrawText:
 			if (addWinMsg(MSG(buf)) && FbShellManager::instance()->activeShell() == mShell) {
 				doDrawText(MSG(buf));
+				rendered = true;
 			}
 			break;
 
@@ -281,6 +284,7 @@ void ImProxy::readyRead(s8 *buf, u32 len)
 			break;
 		}
 	}
+	if (rendered) Screen::instance()->swapBuffers();
 }
 
 typedef enum { Intersect, Inside, Outside } IntersectState;
