@@ -148,6 +148,7 @@ void VTerm::reset_sixel()
 {
 	sixel_canvas_t *sc = mSixelCanvas;
 	if (!sc) return;
+	if (!sc->pixmap) return;
 
 	memset(sc->pixmap, 0, sc->width * sc->height * 4);
 
@@ -222,11 +223,11 @@ void VTerm::sixel_nl()
 	sc->point_x = 0;
 	sc->point_y += 6;
 
-	if (sc->point_y + 5 >= sc->height) {
-		sc->height = sc->point_y + 6;
-	}
+	// Cap img_height at the actual allocated pixmap height to prevent OOB access
 	if (sc->point_y + 5 > sc->img_height) {
-		sc->img_height = sc->point_y + 6;
+		int new_h = sc->point_y + 6;
+		if (new_h > sc->height) new_h = sc->height;  // clamp to allocated
+		if (new_h > 0) sc->img_height = new_h;
 	}
 }
 
@@ -237,12 +238,17 @@ void VTerm::sixel_repeat(const u8 **data, u32 *len)
 
 	u32 count = 0;
 	while (*len > 0 && **data >= '0' && **data <= '9') {
-		count = count * 10 + (**data - '0');
+		u32 next = count * 10 + (**data - '0');
+		if (next < count) { count = 0xFFFFFFFF; break; } // overflow, saturate
+		count = next;
 		(*data)++;
 		(*len)--;
 	}
 
 	if (count == 0) count = 1;
+
+	// Sanity limit: cap repeat count to prevent freeze from excessive digits
+	if (count > 65535) count = 65535;
 
 	if (*len > 0 && **data >= '?' && **data <= '~') {
 		u8 bits = **data - '?';
@@ -267,7 +273,9 @@ void VTerm::sixel_attr(const u8 **data, u32 *len)
 	bool in_param = false;
 
 	while (*len > 0 && **data != ';' && **data >= '0' && **data <= '9') {
-		params[param_idx] = params[param_idx] * 10 + (**data - '0');
+		int next = params[param_idx] * 10 + (**data - '0');
+		if (next > 65535) next = 65535; // clamp to reasonable limit
+		params[param_idx] = next;
 		in_param = true;
 		(*data)++;
 		(*len)--;
@@ -280,7 +288,9 @@ void VTerm::sixel_attr(const u8 **data, u32 *len)
 			(*data)++;
 			(*len)--;
 		} else if (**data >= '0' && **data <= '9') {
-			params[param_idx] = params[param_idx] * 10 + (**data - '0');
+			int next = params[param_idx] * 10 + (**data - '0');
+			if (next > 65535) next = 65535;
+			params[param_idx] = next;
 			in_param = true;
 			(*data)++;
 			(*len)--;
@@ -308,7 +318,9 @@ void VTerm::sixel_color(const u8 **data, u32 *len)
 			(*data)++;
 			(*len)--;
 		} else if (**data >= '0' && **data <= '9') {
-			params[param_idx] = params[param_idx] * 10 + (**data - '0');
+			int next = params[param_idx] * 10 + (**data - '0');
+			if (next > 65535) next = 65535; // clamp to avoid overflow
+			params[param_idx] = next;
 			(*data)++;
 			(*len)--;
 		} else {
@@ -426,7 +438,9 @@ void VTerm::sixel_copy_to_cells()
 			free_pixmap(cell_idx);
 
 			// Allocate new pixmap for this cell
-			u8 *cell_pixmap = (u8 *)malloc(mCellW * mCellH * 4);
+			size_t cell_sz = (size_t)mCellW * mCellH * 4;
+			if (cell_sz / 4 / mCellH != mCellW) continue; // overflow check
+			u8 *cell_pixmap = (u8 *)malloc(cell_sz);
 			if (!cell_pixmap) continue;
 
 			pixmaps[cell_idx] = cell_pixmap;
@@ -491,7 +505,22 @@ void VTerm::sixel_parse_header()
 
 	if (!mSixelCanvas->pixmap || (int)pix_w != mSixelCanvas->width || (int)pix_h != mSixelCanvas->height) {
 		if (mSixelCanvas->pixmap) free(mSixelCanvas->pixmap);
-		mSixelCanvas->pixmap = (u8 *)calloc(pix_w * pix_h, 4);
+		// Check for overflow: pix_w * pix_h must fit in size_t
+		u64 alloc_sz = (u64)pix_w * pix_h;
+		if (alloc_sz > 0x7FFFFFFF) { // Sanity limit: 2GB
+			mSixelCanvas->pixmap = 0;
+			mSixelCanvas->width = 0;
+			mSixelCanvas->height = 0;
+			DBG("sixel_header: allocation too large %llu\n", (unsigned long long)alloc_sz);
+			return;
+		}
+		mSixelCanvas->pixmap = (u8 *)calloc((size_t)alloc_sz, 4);
+		if (!mSixelCanvas->pixmap) {
+			mSixelCanvas->width = 0;
+			mSixelCanvas->height = 0;
+			DBG("sixel_header: calloc failed\n");
+			return;
+		}
 		mSixelCanvas->width = pix_w;
 		mSixelCanvas->height = pix_h;
 		mSixelCanvas->line_length = pix_w * 4;

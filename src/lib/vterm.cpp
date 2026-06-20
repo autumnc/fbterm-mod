@@ -585,7 +585,9 @@ void VTerm::do_dcs_char()
 		// Not ST, buffer the ESC and current char
 		if (mDcsLen + 2 > mDcsCap) {
 			mDcsCap = mDcsCap ? mDcsCap * 2 : 4096;
-			mDcsBuf = (u8 *)realloc(mDcsBuf, mDcsCap);
+			u8 *tmp = (u8 *)realloc(mDcsBuf, mDcsCap);
+			if (!tmp) return; // allocation failed, drop data
+			mDcsBuf = tmp;
 		}
 		mDcsBuf[mDcsLen++] = 0x1b;
 		mDcsBuf[mDcsLen++] = cur_char;
@@ -607,7 +609,9 @@ void VTerm::do_dcs_char()
 	// Buffer the byte
 	if (mDcsLen + 1 > mDcsCap) {
 		mDcsCap = mDcsCap ? mDcsCap * 2 : 4096;
-		mDcsBuf = (u8 *)realloc(mDcsBuf, mDcsCap);
+		u8 *tmp = (u8 *)realloc(mDcsBuf, mDcsCap);
+		if (!tmp) return; // allocation failed, drop data
+		mDcsBuf = tmp;
 	}
 	mDcsBuf[mDcsLen++] = cur_char;
 }
