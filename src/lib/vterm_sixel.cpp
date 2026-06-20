@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include "vterm.h"
 
-#define SIXEL_DEBUG 1
+// #define SIXEL_DEBUG 1
 
 #ifdef SIXEL_DEBUG
 static FILE *dbg = 0;
@@ -299,8 +299,9 @@ void VTerm::sixel_attr(const u8 **data, u32 *len)
 		}
 	}
 
-	sc->width = params[2] > 0 ? params[2] : 1;
-	sc->height = params[3] > 0 ? params[3] : 6;
+	// Only update width; height is the allocated canvas buffer size
+	// and must not be reduced (img_height tracks logical image height)
+	if (params[2] > 0) sc->width = params[2];
 }
 
 void VTerm::sixel_color(const u8 **data, u32 *len)
