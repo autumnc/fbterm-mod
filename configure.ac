@@ -35,6 +35,31 @@ AC_ARG_ENABLE(signalfd,
               [SIGNALFD="$enableval"],
               [SIGNALFD=auto])
 
+AC_ARG_ENABLE(neon,
+              AC_HELP_STRING([--enable-neon], [enable ARM NEON SIMD optimizations [[default=auto]]]),
+              [NEON="$enableval"],
+              [NEON=auto])
+
+# ARM NEON detection
+HAVE_ARM_NEON=no
+if test x"$NEON" != xno; then
+  saved_CXXFLAGS="$CXXFLAGS"
+  CXXFLAGS="$CXXFLAGS -march=armv7-a -mfpu=neon"
+  AC_MSG_CHECKING([whether ARM NEON intrinsics compile])
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([[#include <arm_neon.h>]],
+      [[uint8x8_t v; (void)v; return 0;]])],
+    [AC_MSG_RESULT([yes])
+     HAVE_ARM_NEON=yes
+     NEON_CFLAGS="-march=armv7-a -mfpu=neon"],
+    [AC_MSG_RESULT([no])
+     if test x"$NEON" = xyes; then
+       AC_MSG_ERROR([--enable-neon requested but NEON intrinsics not supported])
+     fi])
+  CXXFLAGS="$saved_CXXFLAGS"
+fi
+AC_SUBST([NEON_CFLAGS])
+
                                           
 # Checks for libraries.
 AC_CHECK_LIB([util], [forkpty])
@@ -100,6 +125,7 @@ if test x"$SIGNALFD" = xauto -a x"$cross_compiling" = xno; then
 fi
 
 AM_CONDITIONAL(VESA, test x"$VESA" = xyes)
+AM_CONDITIONAL(HAVE_ARM_NEON, test x"$HAVE_ARM_NEON" = xyes)
 
 x86_LIBS=
 [[ "$VESA" = "yes" ]] && x86_LIBS="-lx86"
@@ -108,12 +134,14 @@ AC_SUBST([X86_LIBS], ["$x86_LIBS"])
 AH_TEMPLATE([ENABLE_GPM])
 AH_TEMPLATE([ENABLE_VESA])
 AH_TEMPLATE([HAVE_EPOLL])
+AH_TEMPLATE([HAVE_ARM_NEON])
 AH_TEMPLATE([HAVE_SIGNALFD])
 
 [[ "$GPM" = "yes" ]] && AC_DEFINE([ENABLE_GPM])
 [[ "$VESA" = "yes" ]] && AC_DEFINE([ENABLE_VESA])
 [[ "$EPOLL" = "yes" ]] && AC_DEFINE([HAVE_EPOLL])
 [[ "$SIGNALFD" = "yes" ]] && AC_DEFINE([HAVE_SIGNALFD])
+[[ "$HAVE_ARM_NEON" = "yes" ]] && AC_DEFINE([HAVE_ARM_NEON])
 
 AC_CONFIG_FILES([Makefile src/Makefile src/lib/Makefile im/Makefile terminfo/Makefile doc/Makefile doc/fbterm.1])
 AC_CONFIG_LINKS([im/input_key.h:src/input_key.h im/immessage.h:src/immessage.h])

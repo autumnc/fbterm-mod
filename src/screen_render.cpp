@@ -23,6 +23,10 @@
 #include "screen.h"
 #include "fbconfig.h"
 
+#ifdef __ARM_NEON__
+#include <arm_neon.h>
+#endif
+
 #define writeb(addr, val) (*(volatile u8 *)(addr) = (val))
 #define writew(addr, val) (*(volatile u16 *)(addr) = (val))
 #define writel(addr, val) (*(volatile u32 *)(addr) = (val))
@@ -135,6 +139,34 @@ void Screen::endFillDraw()
 void Screen::fillX(u32 x, u32 y, u32 w, u32 pixel)
 {
 	u8 *dst = mVMemBase + y * mBytesPerLine + x * bytes_per_pixel;
+
+#ifdef __ARM_NEON__
+	/* NEON bulk fill: 16 bytes per store, block-aligned */
+	if (w >= 16 / bytes_per_pixel) {
+		u32 ncount;
+		u8 *nd = dst;
+
+		if (bytes_per_pixel == 4) {
+			ncount = w & ~3;
+			uint32x4_t vp = vdupq_n_u32(pixel);
+			for (u32 i = ncount; i; i -= 4, nd += 16)
+				vst1q_u32((u32 *)nd, vp);
+		} else if (bytes_per_pixel == 2) {
+			ncount = w & ~7;
+			uint16x8_t vp = vdupq_n_u16((u16)pixel);
+			for (u32 i = ncount; i; i -= 8, nd += 16)
+				vst1q_u16((u16 *)nd, vp);
+		} else {
+			ncount = w & ~15;
+			uint8x16_t vp = vdupq_n_u8((u8)pixel);
+			for (u32 i = ncount; i; i -= 16, nd += 16)
+				vst1q_u8(nd, vp);
+		}
+
+		dst = nd;
+		w -= ncount;
+	}
+#endif
 
 	// get better performance if write-combining not enabled for video memory
 	for (u32 i = w / ppl; i--; dst += 4) {
