@@ -77,6 +77,7 @@ void FbShellManager::switchShell(u32 num)
 	if (mVcCurrent && setActive(mShellList[mCurShell])) {
 		redraw(0, 0, screen->cols(), screen->rows());
 	}
+	screen->swapBuffers();
 }
 
 void FbShellManager::drawCursor()
@@ -84,6 +85,7 @@ void FbShellManager::drawCursor()
 	if (mActiveShell) {
 		mActiveShell->updateCursor();
 	}
+	screen->swapBuffers();
 }
 
 void FbShellManager::historyScroll(bool down)
@@ -91,6 +93,7 @@ void FbShellManager::historyScroll(bool down)
 	if (mActiveShell) {
 		mActiveShell->historyDisplay(false, down ? mActiveShell->h() : -mActiveShell->h());
 	}
+	screen->swapBuffers();
 }
 
 void FbShellManager::switchVc(bool enter)
@@ -101,6 +104,7 @@ void FbShellManager::switchVc(bool enter)
 	if (enter) {
 		redraw(0, 0, screen->cols(), screen->rows());
 	}
+	screen->swapBuffers();
 }
 
 void FbShellManager::shellExited(FbShell *shell)
@@ -117,6 +121,7 @@ void FbShellManager::shellExited(FbShell *shell)
 	if (!--mShellCount) {
 		FbTerm::instance()->exit();
 	}
+	screen->swapBuffers();
 }
 
 u32 FbShellManager::getIndex(FbShell *shell, bool forward,  bool stepfirst)
@@ -164,6 +169,7 @@ void FbShellManager::redraw(u16 x, u16 y, u16 w, u16 h)
 	} else {
 		screen->fillRect(FW(x), FH(y), FW(w), FH(h), 0);
 	}
+	screen->swapBuffers();
 }
 
 void FbShellManager::childProcessExited(s32 pid)
@@ -171,4 +177,5 @@ void FbShellManager::childProcessExited(s32 pid)
 	for (u32 i = 0; i < NR_SHELLS; i++) {
 		if (mShellList[i] && mShellList[i]->childProcessExited(pid)) break;
 	}
+	screen->swapBuffers();
 }

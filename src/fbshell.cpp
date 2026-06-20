@@ -522,6 +522,7 @@ void FbShell::updateCursor()
 		break;
 	}
 	}
+		screen->swapBuffers();
 }
 
 void FbShell::enableCursor(bool enable)
@@ -779,6 +780,7 @@ void FbShell::readyRead(s8 *buf, u32 len)
 {
 	clearMousePointer();
 	Shell::readyRead(buf, len);
+	screen->swapBuffers();
 }
 
 void FbShell::clearMousePointer()

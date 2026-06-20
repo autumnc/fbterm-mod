@@ -93,6 +93,7 @@ FbDev::FbDev()
 	mHeight = vinfo.yres;
 	mBitsPerPixel = vinfo.bits_per_pixel;
 	mBytesPerLine = finfo.line_length;
+	mFbFd = fbdev_fd;
 	mVMemBase = (u8 *)mmap(0, finfo.smem_len, PROT_READ | PROT_WRITE, MAP_SHARED, fbdev_fd, 0);
 
 

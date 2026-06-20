@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include "screen.h"
 #include "font.h"
 #include "fbshellman.h"
@@ -87,6 +88,7 @@ Screen *Screen::createInstance()
 	}
 
 	pScreen->initFillDraw();
+	pScreen->initDoubleBuffer();
 	return pScreen;
 }
 
@@ -102,6 +104,11 @@ Screen::Screen()
 	mOffsetCur = 0;
 
 	mVMemBase = 0;
+	mRealFbBase = 0;
+	mBackBuffer = 0;
+	mFbMemSize = 0;
+	mDirty = false;
+	mFbFd = -1;
 	mPalette = 0;
 	mDirectColorTable = 0;
 
@@ -118,6 +125,11 @@ Screen::~Screen()
 {
 	Font::uninstance();
 	endFillDraw();
+
+	if (mBackBuffer) {
+		delete[] mBackBuffer;
+		mBackBuffer = 0;
+	}
 
 	s32 ret = write(STDIN_FILENO, show_cursor, sizeof(show_cursor) - 1);
 	ret = write(STDIN_FILENO, enable_blank, sizeof(enable_blank) - 1);
@@ -484,4 +496,36 @@ RenderColor Screen::resolveColor(u8 index, bool direct) const
 		rc.index = index;
 	}
 	return rc;
+}
+
+#ifndef FBIO_WAITFORVSYNC
+#define FBIO_WAITFORVSYNC _IOW('F', 0x20, u32)
+#endif
+
+void Screen::initDoubleBuffer()
+{
+	if (mBackBuffer) return;
+
+	mFbMemSize = mBytesPerLine * ((mRotateType == Rotate0 || mRotateType == Rotate180) ? mHeight : mWidth);
+	if (!mFbMemSize) return;
+
+	mRealFbBase = mVMemBase;
+	mBackBuffer = new u8[mFbMemSize];
+	memcpy(mBackBuffer, mRealFbBase, mFbMemSize);
+	mVMemBase = mBackBuffer;
+	mDirty = true;
+}
+
+void Screen::swapBuffers()
+{
+	if (!mBackBuffer) return;
+
+	memcpy(mRealFbBase, mBackBuffer, mFbMemSize);
+}
+
+void Screen::waitVsync()
+{
+	if (mFbFd < 0) return;
+	u32 crt = 0;
+	ioctl(mFbFd, FBIO_WAITFORVSYNC, &crt);
 }

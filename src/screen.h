@@ -65,6 +65,10 @@ public :
 	void showInfo(bool verbose);
 	virtual void switchVc(bool enter);
 
+	void initDoubleBuffer();
+	void swapBuffers();
+	void waitVsync();
+
 protected:
 	u32 mWidth, mHeight;
 	u16 mCols, mRows;
@@ -78,7 +82,9 @@ protected:
 	s32 mOffsetCur;
 
 	u8 *mVMemBase;
+		u8 *mRealFbBase;
 	const Color *mPalette;
+		int mFbFd;
 
 private:
 	virtual void setupOffset() {}
@@ -119,6 +125,10 @@ private:
 	bool mHasCustomBackground;
 	u32 mCustomBackgroundPixel;
 	Color mCustomBackgroundColor;
+
+		u8 *mBackBuffer;
+		u32 mFbMemSize;
+		bool mDirty;
 
 };
 #endif
