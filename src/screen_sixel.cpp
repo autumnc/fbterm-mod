@@ -40,6 +40,8 @@ void Screen::drawSixelCell(u32 x, u32 y, const u8 *pixmap, u32 bg_pixel)
 	if (y + draw_h > mHeight) draw_h = mHeight - y;
 	if (!draw_w || !draw_h) return;
 
+	adjustOffset(x, y);
+
 	u32 row_skip = (cell_w - draw_w) * 4;
 	const u8 *src = pixmap;
 

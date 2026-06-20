@@ -505,15 +505,14 @@ RenderColor Screen::resolveColor(u8 index, bool direct) const
 void Screen::initDoubleBuffer()
 {
 	if (mBackBuffer) return;
-
-	mFbMemSize = mBytesPerLine * ((mRotateType == Rotate0 || mRotateType == Rotate180) ? mHeight : mWidth);
+	// mFbMemSize is set by FbDev to finfo.smem_len (total fb allocation,
+	// which may be larger than visible area for YPan/YWrap scrolling)
 	if (!mFbMemSize) return;
 
 	mRealFbBase = mVMemBase;
 	mBackBuffer = new u8[mFbMemSize];
 	memcpy(mBackBuffer, mRealFbBase, mFbMemSize);
 	mVMemBase = mBackBuffer;
-	mDirty = true;
 }
 
 void Screen::swapBuffers()

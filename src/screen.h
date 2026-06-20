@@ -83,6 +83,7 @@ protected:
 
 	u8 *mVMemBase;
 		u8 *mRealFbBase;
+		u32 mFbMemSize;
 	const Color *mPalette;
 		int mFbFd;
 
@@ -127,7 +128,6 @@ private:
 	Color mCustomBackgroundColor;
 
 		u8 *mBackBuffer;
-		u32 mFbMemSize;
 		bool mDirty;
 
 };
