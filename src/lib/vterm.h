@@ -34,7 +34,8 @@ public:
 			return fcolor != a.fcolor || bcolor != a.bcolor || intensity != a.intensity
 				|| italic != a.italic || underline != a.underline || blink != a.blink || reverse != a.reverse
 				|| strikethrough != a.strikethrough
-				|| direct_fg != a.direct_fg || direct_bg != a.direct_bg;
+				|| direct_fg != a.direct_fg || direct_bg != a.direct_bg
+				|| has_pixmap != a.has_pixmap;
 		}
 
 		u16 fcolor : 8;
@@ -48,6 +49,7 @@ public:
 		u16 type : 2;
 		u16 direct_fg : 1;
 		u16 direct_bg : 1;
+		u16 has_pixmap : 1;
 	};
 
 	typedef enum {
@@ -112,6 +114,14 @@ protected:
 	virtual void historyChanged(u32 cur, u32 total) {}
 	virtual void request(RequestType type, u32 val = 0) {}
 	virtual void requestUpdate(u16 x, u16 y, u16 w, u16 h);
+
+	// Sixel pixmap storage accessible to FbShell for rendering
+	u8 **pixmaps;
+	u32 mCellW, mCellH;
+	u8* pixmap(u16 x, u16 y) {
+		if (!pixmaps || x >= width || y >= height) return 0;
+		return pixmaps[get_line(y) * max_width + x];
+	}
 
 private:
 	// utility functions
@@ -198,7 +208,7 @@ private:
 	u8 init_default_color(bool foreground, bool &direct);
 	static bool init_ambiguous_wide();
 	typedef enum {
-		ESnormal = 0, ESesc, ESsquare, ESnonstd, ESpercent, EScharset, EShash, ESfunckey, ESkeep
+		ESnormal = 0, ESesc, ESsquare, ESnonstd, ESpercent, EScharset, EShash, ESdcs, ESfunckey, ESkeep
 	} EscapeState;
 
 	EscapeState esc_state;
@@ -295,6 +305,40 @@ private:
 	static Color s_default_bg_direct;
 	static bool s_has_default_fg_direct;
 	static bool s_has_default_bg_direct;
+
+	// Sixel support
+	struct sixel_canvas_t {
+		u8 *pixmap;
+		int point_x, point_y;
+		int width, height;     // canvas buffer dimensions (terminal pixels)
+		int img_width, img_height; // actual sixel image bounds
+		int line_length;
+		u8 color_index;
+		u32 color_table[256];
+	} *mSixelCanvas;
+
+	// DCS state
+	u8 *mDcsBuf;
+	u32 mDcsLen, mDcsCap;
+	bool mDcsInEsc;
+
+	void enter_dcs();
+	void do_dcs_char();
+	void dcs_dispatch();
+	void free_pixmap(u32 idx);
+	void free_row_pixmaps(u16 y);
+
+	// Sixel parsing (vterm_sixel.cpp)
+	void reset_sixel();
+	void sixel_parse_header();
+	void sixel_parse_data(const u8 *data, u32 len);
+	void sixel_bitmap(u8 bits);
+	void sixel_repeat(const u8 **data, u32 *len);
+	void sixel_color(const u8 **data, u32 *len);
+	void sixel_attr(const u8 **data, u32 *len);
+	void sixel_cr();
+	void sixel_nl();
+	void sixel_copy_to_cells();
 };
 
 #endif

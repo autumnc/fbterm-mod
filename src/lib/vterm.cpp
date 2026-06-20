@@ -20,6 +20,8 @@
  */
 
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include "vterm.h"
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -28,7 +30,7 @@
 // Verify CharAttr size didn't grow (critical for memcpy compatibility)
 static_assert(sizeof(VTerm::CharAttr) == 4, "CharAttr must remain 4 bytes");
 
-VTerm::CharAttr VTerm::default_char_attr = { 0, 0, 1, 0, 0, 0, 0, 0, VTerm::CharAttr::Single, 0, 0 };
+VTerm::CharAttr VTerm::default_char_attr = { 0, 0, 1, 0, 0, 0, 0, 0, VTerm::CharAttr::Single, 0, 0, 0 };
 
 Color VTerm::s_default_fg_direct = {0, 0, 0};
 Color VTerm::s_default_bg_direct = {0, 0, 0};
@@ -63,6 +65,7 @@ VTerm::CharAttr VTerm::erase_char_attr()
 	a.type = CharAttr::Single;
 	a.direct_fg = char_attr.direct_fg;
 	a.direct_bg = char_attr.direct_bg;
+	a.has_pixmap = 0;
 
 	return a;
 }
@@ -131,6 +134,7 @@ VTerm::VTerm(u16 w, u16 h)
 
 	text = 0;
 	attrs = 0;
+	pixmaps = 0;
 	tab_stops = 0;
 	linenumbers = 0;
 	dirty_startx = 0;
@@ -138,12 +142,21 @@ VTerm::VTerm(u16 w, u16 h)
 
 	width = height = 0;
 	max_width = max_height = 0;
+	mCellW = 0;
+	mCellH = 0;
 
 	history_full = false;
 	history_save_line = 0;
 	visual_start_line = 0;
 
 	mDirectColorCount = 0;
+
+	mSixelCanvas = 0;
+
+	mDcsBuf = 0;
+	mDcsLen = 0;
+	mDcsCap = 0;
+	mDcsInEsc = false;
 
 	reset();
 	resize(w, h);
@@ -152,6 +165,22 @@ VTerm::VTerm(u16 w, u16 h)
 VTerm::~VTerm()
 {
 	if (!text) return;
+
+	// Free all pixmaps
+	if (pixmaps) {
+		u32 total = max_width * (history_lines + max_height);
+		for (u32 i = 0; i < total; i++) {
+			if (pixmaps[i]) free(pixmaps[i]);
+		}
+		delete[] pixmaps;
+	}
+
+	if (mSixelCanvas) {
+		if (mSixelCanvas->pixmap) free(mSixelCanvas->pixmap);
+		free(mSixelCanvas);
+	}
+
+	if (mDcsBuf) free(mDcsBuf);
 
 	delete[] text;
 	delete[] attrs;
@@ -190,6 +219,17 @@ void VTerm::reset()
 	if (text) {
 		memset(tab_stops, 0, max_width / 8 + 1);
 		clear_area(0, 0, width - 1, height - 1);
+
+		// Free all pixmaps on reset
+		if (pixmaps) {
+			u32 total = max_width * (history_lines + max_height);
+			for (u32 i = 0; i < total; i++) {
+				if (pixmaps[i]) {
+					free(pixmaps[i]);
+					pixmaps[i] = 0;
+				}
+			}
+		}
 	}
 
 	modeChanged(AllModes);
@@ -242,6 +282,10 @@ void VTerm::resize(u16 w, u16 h)
 	if (new_max_width > max_width || new_max_height > max_height) {
 		u32 *new_text = new u32[new_max_width * (history_lines + new_max_height)];
 		CharAttr *new_attrs = new CharAttr[new_max_width * (history_lines + new_max_height)];
+		u8 **new_pixmaps = new u8*[new_max_width * (history_lines + new_max_height)];
+
+		u32 new_total = new_max_width * (history_lines + new_max_height);
+		for (u32 i = 0; i < new_total; i++) new_pixmaps[i] = 0;
 
 		if (text) {
 			u32 start, new_start;
@@ -251,6 +295,7 @@ void VTerm::resize(u16 w, u16 h)
 				new_start = i * new_max_width;
 				memcpy(&new_text[new_start], &text[start], sizeof(*text) * max_width);
 				memcpy(&new_attrs[new_start], &attrs[start], sizeof(*attrs) * max_width);
+				memcpy(&new_pixmaps[new_start], &pixmaps[start], sizeof(*pixmaps) * max_width);
 
 				for (u16 j = max_width; j < new_max_width; j++) {
 					new_text[new_start + j] = ' ';
@@ -263,14 +308,17 @@ void VTerm::resize(u16 w, u16 h)
 				new_start = (history_lines + i) * new_max_width;
 				memcpy(&new_text[new_start], &text[start], sizeof(*text) * max_width);
 				memcpy(&new_attrs[new_start], &attrs[start], sizeof(*attrs) * max_width);
+				memcpy(&new_pixmaps[new_start], &pixmaps[start], sizeof(*pixmaps) * max_width);
 			}
 
 			delete[] text;
 			delete[] attrs;
+			delete[] pixmaps;
 		}
 
 		text = new_text;
 		attrs = new_attrs;
+		pixmaps = new_pixmaps;
 		max_width = new_max_width;
 		max_height = new_max_height;
 	}
@@ -487,6 +535,10 @@ void VTerm::do_normal_char()
 		changed_line(cursor_y, cursor_x, cursor_x + (dw ? 1 : 0));
 	}
 
+	// Free pixmap if overwriting a sixel cell
+	free_pixmap(yp + cursor_x);
+	if (dw) free_pixmap(yp + cursor_x + 1);
+
 	text[yp + cursor_x] = cur_char;
 	attrs[yp + cursor_x] = normal_char_attr();
 
@@ -503,6 +555,11 @@ void VTerm::do_normal_char()
 
 void VTerm::do_control_char()
 {
+	if (esc_state == ESdcs) {
+		do_dcs_char();
+		return;
+	}
+
 	u8 index = (cur_char < MAX_CONTROL_CODE ? control_map[cur_char] : 0);
 	const Sequence *seq = control_sequences + index;
 
@@ -512,6 +569,81 @@ void VTerm::do_control_char()
 
 	if (seq->action) (this->*(seq->action))();
 	if (seq->next != ESkeep) esc_state = seq->next;
+}
+
+void VTerm::do_dcs_char()
+{
+	// Check for string terminator: BEL (0x07) or ESC \ (0x1b 0x5c)
+	if (mDcsInEsc) {
+		mDcsInEsc = false;
+		if (cur_char == '\\') {
+			// ST received, dispatch DCS
+			dcs_dispatch();
+			esc_state = ESnormal;
+			return;
+		}
+		// Not ST, buffer the ESC and current char
+		if (mDcsLen + 2 > mDcsCap) {
+			mDcsCap = mDcsCap ? mDcsCap * 2 : 4096;
+			mDcsBuf = (u8 *)realloc(mDcsBuf, mDcsCap);
+		}
+		mDcsBuf[mDcsLen++] = 0x1b;
+		mDcsBuf[mDcsLen++] = cur_char;
+		return;
+	}
+
+	if (cur_char == 0x07) {
+		// BEL = ST, dispatch DCS
+		dcs_dispatch();
+		esc_state = ESnormal;
+		return;
+	}
+
+	if (cur_char == 0x1b) {
+		mDcsInEsc = true;
+		return;
+	}
+
+	// Buffer the byte
+	if (mDcsLen + 1 > mDcsCap) {
+		mDcsCap = mDcsCap ? mDcsCap * 2 : 4096;
+		mDcsBuf = (u8 *)realloc(mDcsBuf, mDcsCap);
+	}
+	mDcsBuf[mDcsLen++] = cur_char;
+}
+
+void VTerm::enter_dcs()
+{
+	mDcsLen = 0;
+	mDcsInEsc = false;
+}
+
+void VTerm::dcs_dispatch()
+{
+	if (!mDcsLen) return;
+
+	// Find the first final character (marks DCS type).
+	// DCS parameters (P1;P2;P3) are digits/semicolons, so the first
+	// non-digit/non-semicolon in the final char range is the type marker.
+	u8 final_char = 0;
+	for (u32 i = 0; i < mDcsLen; i++) {
+		u8 c = mDcsBuf[i];
+		if (c >= '@' && c <= '~' && c != ';' && !(c >= '0' && c <= '9')) {
+			final_char = c;
+			break;
+		}
+	}
+
+	if (!final_char) return;
+
+	switch (final_char) {
+	case 'q':
+		sixel_parse_header();
+		break;
+	// Future: '{' for DECDLD, 'p' for ReGIS, etc.
+	default:
+		break;
+	}
 }
 
 void VTerm::update()
@@ -695,15 +827,18 @@ void VTerm::shift_text(u16 y, u16 start_x, u16 end_x, s16 num)
 		if (num<0) {
 			memmove(text+yp+start_x, text+yp+start_x-num, sizeof(*text) * (mx+num));
 			memmove(attrs+yp+start_x, attrs+yp+start_x-num, sizeof(*attrs) * (mx+num));
+			if (pixmaps) memmove(pixmaps+yp+start_x, pixmaps+yp+start_x-num, sizeof(*pixmaps) * (mx+num));
 		} else {
 			memmove(text+yp+start_x+num, text+yp+start_x, sizeof(*text) * (mx-num));
 			memmove(attrs+yp+start_x+num, attrs+yp+start_x, sizeof(*attrs) * (mx-num));
+			if (pixmaps) memmove(pixmaps+yp+start_x+num, pixmaps+yp+start_x, sizeof(*pixmaps) * (mx-num));
 		}
 	}
 
 	u16 x = (num < 0) ? (num + end_x + 1) : start_x;
 	if (num < 0) num = -num;
 	for (; num--; x++) {
+		free_pixmap(yp + x);
 		text[yp + x] = ' ';
 		attrs[yp + x] = erase_char_attr();
 	}
@@ -723,6 +858,7 @@ void VTerm::clear_area(u16 start_x, u16 start_y, u16 end_x, u16 end_y)
 	for (y=start_y; y<=end_y; y++) {
 		yp = linenumbers[y]*max_width;
 		for (x=start_x; x<=end_x; x++) {
+			free_pixmap(yp + x);
 			text[yp+x]= ' ';
 			attrs[yp+x] = erase_char_attr();
 		}
@@ -739,6 +875,23 @@ void VTerm::changed_line(u16 y, u16 start_x, u16 end_x)
 
 	if (dirty_startx[y] > start_x) dirty_startx[y] = start_x;
 	if (dirty_endx[y] < end_x) dirty_endx[y] = end_x;
+}
+
+void VTerm::free_pixmap(u32 idx)
+{
+	if (pixmaps && pixmaps[idx]) {
+		free(pixmaps[idx]);
+		pixmaps[idx] = 0;
+	}
+}
+
+void VTerm::free_row_pixmaps(u16 y)
+{
+	if (!pixmaps) return;
+	u32 yp = get_line(y) * max_width;
+	for (u16 x = 0; x < width; x++) {
+		free_pixmap(yp + x);
+	}
 }
 
 void VTerm::move_cursor(u16 x, u16 y)
@@ -789,8 +942,22 @@ void VTerm::history_scroll(u16 num)
 	for (u16 i = 0; i < num; i++) {
 		yp = linenumbers[i] * max_width;
 		yp_history = history_save_line * max_width;
+
+		// Free pixmaps at history destination and source (don't store in history)
+		if (pixmaps) {
+			for (u16 j = 0; j < width; j++) {
+				free_pixmap(yp_history + j);
+				free_pixmap(yp + j);
+			}
+		}
+
 		memcpy(&text[yp_history], &text[yp], sizeof(*text) * width);
 		memcpy(&attrs[yp_history], &attrs[yp], sizeof(*attrs) * width);
+
+		// Clear has_pixmap flag in history cells since pixmaps are freed
+		for (u16 j = 0; j < width; j++) {
+			attrs[yp_history + j].has_pixmap = 0;
+		}
 
 		if (width < max_width) {
 			for (u16 i = width; i < max_width; i++) {

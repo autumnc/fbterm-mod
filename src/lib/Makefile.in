@@ -113,7 +113,8 @@ libshell_a_LIBADD =
 am_libshell_a_OBJECTS = libshell_a-io.$(OBJEXT) \
 	libshell_a-shell.$(OBJEXT) libshell_a-vterm_action.$(OBJEXT) \
 	libshell_a-vterm.$(OBJEXT) libshell_a-vterm_states.$(OBJEXT) \
-	libshell_a-wcwidth.$(OBJEXT) libshell_a-charsetmap.$(OBJEXT)
+	libshell_a-vterm_sixel.$(OBJEXT) libshell_a-wcwidth.$(OBJEXT) \
+	libshell_a-charsetmap.$(OBJEXT)
 libshell_a_OBJECTS = $(am_libshell_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -134,6 +135,7 @@ am__depfiles_remade = ./$(DEPDIR)/libshell_a-charsetmap.Po \
 	./$(DEPDIR)/libshell_a-io.Po ./$(DEPDIR)/libshell_a-shell.Po \
 	./$(DEPDIR)/libshell_a-vterm.Po \
 	./$(DEPDIR)/libshell_a-vterm_action.Po \
+	./$(DEPDIR)/libshell_a-vterm_sixel.Po \
 	./$(DEPDIR)/libshell_a-vterm_states.Po \
 	./$(DEPDIR)/libshell_a-wcwidth.Po
 am__mv = mv -f
@@ -307,7 +309,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 noinst_LIBRARIES = libshell.a
-libshell_a_SOURCES = io.cpp io.h shell.cpp shell.h vterm_action.cpp vterm.cpp vterm_states.cpp vterm.h type.h instance.h wcwidth.cpp charsetmap.cpp
+libshell_a_SOURCES = io.cpp io.h shell.cpp shell.h vterm_action.cpp vterm.cpp vterm_states.cpp vterm_sixel.cpp vterm.h type.h instance.h wcwidth.cpp charsetmap.cpp
 libshell_a_CXXFLAGS = -fno-exceptions -fno-rtti
 all: all-am
 
@@ -362,6 +364,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libshell_a-shell.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libshell_a-vterm.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libshell_a-vterm_action.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libshell_a-vterm_sixel.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libshell_a-vterm_states.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libshell_a-wcwidth.Po@am__quote@ # am--include-marker
 
@@ -454,6 +457,20 @@ libshell_a-vterm_states.obj: vterm_states.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='vterm_states.cpp' object='libshell_a-vterm_states.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libshell_a_CXXFLAGS) $(CXXFLAGS) -c -o libshell_a-vterm_states.obj `if test -f 'vterm_states.cpp'; then $(CYGPATH_W) 'vterm_states.cpp'; else $(CYGPATH_W) '$(srcdir)/vterm_states.cpp'; fi`
+
+libshell_a-vterm_sixel.o: vterm_sixel.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libshell_a_CXXFLAGS) $(CXXFLAGS) -MT libshell_a-vterm_sixel.o -MD -MP -MF $(DEPDIR)/libshell_a-vterm_sixel.Tpo -c -o libshell_a-vterm_sixel.o `test -f 'vterm_sixel.cpp' || echo '$(srcdir)/'`vterm_sixel.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libshell_a-vterm_sixel.Tpo $(DEPDIR)/libshell_a-vterm_sixel.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='vterm_sixel.cpp' object='libshell_a-vterm_sixel.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libshell_a_CXXFLAGS) $(CXXFLAGS) -c -o libshell_a-vterm_sixel.o `test -f 'vterm_sixel.cpp' || echo '$(srcdir)/'`vterm_sixel.cpp
+
+libshell_a-vterm_sixel.obj: vterm_sixel.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libshell_a_CXXFLAGS) $(CXXFLAGS) -MT libshell_a-vterm_sixel.obj -MD -MP -MF $(DEPDIR)/libshell_a-vterm_sixel.Tpo -c -o libshell_a-vterm_sixel.obj `if test -f 'vterm_sixel.cpp'; then $(CYGPATH_W) 'vterm_sixel.cpp'; else $(CYGPATH_W) '$(srcdir)/vterm_sixel.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libshell_a-vterm_sixel.Tpo $(DEPDIR)/libshell_a-vterm_sixel.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='vterm_sixel.cpp' object='libshell_a-vterm_sixel.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libshell_a_CXXFLAGS) $(CXXFLAGS) -c -o libshell_a-vterm_sixel.obj `if test -f 'vterm_sixel.cpp'; then $(CYGPATH_W) 'vterm_sixel.cpp'; else $(CYGPATH_W) '$(srcdir)/vterm_sixel.cpp'; fi`
 
 libshell_a-wcwidth.o: wcwidth.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libshell_a_CXXFLAGS) $(CXXFLAGS) -MT libshell_a-wcwidth.o -MD -MP -MF $(DEPDIR)/libshell_a-wcwidth.Tpo -c -o libshell_a-wcwidth.o `test -f 'wcwidth.cpp' || echo '$(srcdir)/'`wcwidth.cpp
@@ -612,6 +629,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libshell_a-shell.Po
 	-rm -f ./$(DEPDIR)/libshell_a-vterm.Po
 	-rm -f ./$(DEPDIR)/libshell_a-vterm_action.Po
+	-rm -f ./$(DEPDIR)/libshell_a-vterm_sixel.Po
 	-rm -f ./$(DEPDIR)/libshell_a-vterm_states.Po
 	-rm -f ./$(DEPDIR)/libshell_a-wcwidth.Po
 	-rm -f Makefile
@@ -664,6 +682,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libshell_a-shell.Po
 	-rm -f ./$(DEPDIR)/libshell_a-vterm.Po
 	-rm -f ./$(DEPDIR)/libshell_a-vterm_action.Po
+	-rm -f ./$(DEPDIR)/libshell_a-vterm_sixel.Po
 	-rm -f ./$(DEPDIR)/libshell_a-vterm_states.Po
 	-rm -f ./$(DEPDIR)/libshell_a-wcwidth.Po
 	-rm -f Makefile

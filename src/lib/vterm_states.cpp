@@ -65,6 +65,7 @@ const VTerm::Sequence VTerm::escape_sequences[] = {
 	{ '8', &VTerm::restore_cursor,	ESnormal },
 	{ '>', &VTerm::keypad_numeric,	ESnormal },
 	{ '=', &VTerm::keypad_application,	ESnormal },
+	{ 'P', &VTerm::enter_dcs,	ESdcs },
 	{ -1 },
 
 	// ESsquare
@@ -129,6 +130,9 @@ const VTerm::Sequence VTerm::escape_sequences[] = {
 
 	// EShash
 	{ '8', &VTerm::screen_align,	ESnormal },
+	{ -1 },
+
+	// ESdcs
 	{ -1 },
 
 	// ESfunckey

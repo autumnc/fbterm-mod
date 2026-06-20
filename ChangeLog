@@ -1,3 +1,16 @@
+2026-06-20 version 1.13
+	* src/lib/vterm_sixel.cpp src/lib/vterm.h src/lib/vterm.cpp
+	src/lib/vterm_states.cpp src/lib/vterm_action.cpp:
+	added sixel (DEC graphics) support with DCS escape sequence handling
+	added full sixel bitmap decoding with repeat, color (HLS/RGB), and geometry
+	added per-cell pixmap storage for sixel images with proper scroll/clear handling
+
+	* src/screen_sixel.cpp src/screen.h:
+	added framebuffer sixel rendering at 8/15/16/32 bpp with BGRA conversion
+
+	* src/fbshell.cpp:
+	wired sixel rendering in drawChars(), initialized cell dimensions for sixel
+
 2026-06-05 version 1.9
 	* font.cpp fbconfig.cpp fbconfig.h screen.cpp screen.h fbshell.cpp:
 	added bold/italic rendering with synthetic emboldening and italic shearing

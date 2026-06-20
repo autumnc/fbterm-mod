@@ -51,6 +51,7 @@ public :
 		     u16 num, u32 *text, bool *dw, bool bold = false, bool italic = false,
 		     bool underline = false, bool strikethrough = false);
 	void fillRect(u32 x, u32 y, u32 w, u32 h, u8 color);
+	void drawSixelCell(u32 x, u32 y, const u8 *pixmap, u32 bg_pixel);
 
 	bool move(u16 scol, u16 srow, u16 dcol, u16 drow, u16 w, u16 h);
 	void setPalette(const Color *palette);

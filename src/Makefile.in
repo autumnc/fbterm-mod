@@ -109,7 +109,8 @@ am_fbterm_mod_OBJECTS = fbterm_mod-fbconfig.$(OBJEXT) \
 	fbterm_mod-font.$(OBJEXT) fbterm_mod-input.$(OBJEXT) \
 	fbterm_mod-mouse.$(OBJEXT) fbterm_mod-screen.$(OBJEXT) \
 	fbterm_mod-improxy.$(OBJEXT) \
-	fbterm_mod-screen_render.$(OBJEXT) fbterm_mod-fbdev.$(OBJEXT) \
+	fbterm_mod-screen_render.$(OBJEXT) \
+	fbterm_mod-screen_sixel.$(OBJEXT) fbterm_mod-fbdev.$(OBJEXT) \
 	fbterm_mod-vesadev.$(OBJEXT)
 fbterm_mod_OBJECTS = $(am_fbterm_mod_OBJECTS)
 fbterm_mod_DEPENDENCIES = lib/libshell.a
@@ -141,6 +142,7 @@ am__depfiles_remade = ./$(DEPDIR)/fbterm_mod-fbconfig.Po \
 	./$(DEPDIR)/fbterm_mod-mouse.Po \
 	./$(DEPDIR)/fbterm_mod-screen.Po \
 	./$(DEPDIR)/fbterm_mod-screen_render.Po \
+	./$(DEPDIR)/fbterm_mod-screen_sixel.Po \
 	./$(DEPDIR)/fbterm_mod-vesadev.Po
 am__mv = mv -f
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -358,7 +360,7 @@ top_srcdir = @top_srcdir@
 SUBDIRS = lib
 fbterm_mod_SOURCES = fbconfig.cpp fbconfig.h fbio.cpp fbio.h fbshell.cpp fbshell.h fbshellman.cpp fbshellman.h fbterm.cpp \
 	fbterm.h font.cpp font.h input.cpp input.h input_key.h mouse.cpp mouse.h screen.cpp screen.h improxy.cpp improxy.h \
-	screen_render.cpp fbdev.cpp fbdev.h vesadev.cpp vesadev.h vbe.h
+	screen_render.cpp screen_sixel.cpp fbdev.cpp fbdev.h vesadev.cpp vesadev.h vbe.h
 
 EXTRA_fbterm_mod_SOURCES = signalfd.h
 fbterm_mod_CXXFLAGS = -fno-exceptions -fno-rtti -Ilib @FT2_CFLAGS@ @FC_CFLAGS@
@@ -461,6 +463,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fbterm_mod-mouse.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fbterm_mod-screen.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fbterm_mod-screen_render.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fbterm_mod-screen_sixel.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fbterm_mod-vesadev.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -636,6 +639,20 @@ fbterm_mod-screen_render.obj: screen_render.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='screen_render.cpp' object='fbterm_mod-screen_render.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fbterm_mod_CXXFLAGS) $(CXXFLAGS) -c -o fbterm_mod-screen_render.obj `if test -f 'screen_render.cpp'; then $(CYGPATH_W) 'screen_render.cpp'; else $(CYGPATH_W) '$(srcdir)/screen_render.cpp'; fi`
+
+fbterm_mod-screen_sixel.o: screen_sixel.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fbterm_mod_CXXFLAGS) $(CXXFLAGS) -MT fbterm_mod-screen_sixel.o -MD -MP -MF $(DEPDIR)/fbterm_mod-screen_sixel.Tpo -c -o fbterm_mod-screen_sixel.o `test -f 'screen_sixel.cpp' || echo '$(srcdir)/'`screen_sixel.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/fbterm_mod-screen_sixel.Tpo $(DEPDIR)/fbterm_mod-screen_sixel.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='screen_sixel.cpp' object='fbterm_mod-screen_sixel.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fbterm_mod_CXXFLAGS) $(CXXFLAGS) -c -o fbterm_mod-screen_sixel.o `test -f 'screen_sixel.cpp' || echo '$(srcdir)/'`screen_sixel.cpp
+
+fbterm_mod-screen_sixel.obj: screen_sixel.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fbterm_mod_CXXFLAGS) $(CXXFLAGS) -MT fbterm_mod-screen_sixel.obj -MD -MP -MF $(DEPDIR)/fbterm_mod-screen_sixel.Tpo -c -o fbterm_mod-screen_sixel.obj `if test -f 'screen_sixel.cpp'; then $(CYGPATH_W) 'screen_sixel.cpp'; else $(CYGPATH_W) '$(srcdir)/screen_sixel.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/fbterm_mod-screen_sixel.Tpo $(DEPDIR)/fbterm_mod-screen_sixel.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='screen_sixel.cpp' object='fbterm_mod-screen_sixel.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fbterm_mod_CXXFLAGS) $(CXXFLAGS) -c -o fbterm_mod-screen_sixel.obj `if test -f 'screen_sixel.cpp'; then $(CYGPATH_W) 'screen_sixel.cpp'; else $(CYGPATH_W) '$(srcdir)/screen_sixel.cpp'; fi`
 
 fbterm_mod-fbdev.o: fbdev.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fbterm_mod_CXXFLAGS) $(CXXFLAGS) -MT fbterm_mod-fbdev.o -MD -MP -MF $(DEPDIR)/fbterm_mod-fbdev.Tpo -c -o fbterm_mod-fbdev.o `test -f 'fbdev.cpp' || echo '$(srcdir)/'`fbdev.cpp
@@ -877,6 +894,7 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/fbterm_mod-mouse.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-screen.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-screen_render.Po
+	-rm -f ./$(DEPDIR)/fbterm_mod-screen_sixel.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-vesadev.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -935,6 +953,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/fbterm_mod-mouse.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-screen.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-screen_render.Po
+	-rm -f ./$(DEPDIR)/fbterm_mod-screen_sixel.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-vesadev.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic

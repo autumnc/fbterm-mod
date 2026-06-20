@@ -390,6 +390,11 @@ FbShell::FbShell()
 	mImProxy = 0;
 	mPaletteChanged = false;
 	mPalette = 0;
+
+	// Initialize sixel cell dimensions from font
+	mCellW = FW(1);
+	mCellH = FH(1);
+
 	createShellProcess(Config::instance()->getShellCommand());
 	resize(screen->cols(), screen->rows());
 
@@ -409,14 +414,27 @@ void FbShell::drawChars(CharAttr attr, u16 x, u16 y, u16 w, u16 num, u32 *chars,
 	if (manager->activeShell() != this) return;
 
 	adjustCharAttr(attr);
-	bool bold = (attr.intensity == 2);
-	bool italic = (bool)attr.italic;
-	bool underline = (bool)attr.underline;
-	bool strikethrough = (bool)attr.strikethrough;
-	screen->setDirectColorTable(directColorTable());
-	screen->drawText(FW(x), FH(y), attr.fcolor, attr.bcolor,
-			 attr.direct_fg, attr.direct_bg,
-			 num, chars, dws, bold, italic, underline, strikethrough);
+
+	if (attr.has_pixmap) {
+		// Render sixel cells individually
+		RenderColor bg = screen->resolveColor(attr.bcolor, attr.direct_bg);
+		for (u16 i = 0; i < num; i++) {
+			u16 cx = x + i;
+			u8 *cell_pixmap = pixmap(cx, y);
+			if (cell_pixmap) {
+				screen->drawSixelCell(FW(cx), FH(y), cell_pixmap, bg.pixel);
+			}
+		}
+	} else {
+		bool bold = (attr.intensity == 2);
+		bool italic = (bool)attr.italic;
+		bool underline = (bool)attr.underline;
+		bool strikethrough = (bool)attr.strikethrough;
+		screen->setDirectColorTable(directColorTable());
+		screen->drawText(FW(x), FH(y), attr.fcolor, attr.bcolor,
+				 attr.direct_fg, attr.direct_bg,
+				 num, chars, dws, bold, italic, underline, strikethrough);
+	}
 
 	if (mImProxy) {
 		Rectangle rect = { FW(x), FH(y), FW(w), FH(1) };
