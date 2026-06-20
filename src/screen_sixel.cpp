@@ -8,6 +8,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include "screen.h"
 #include "font.h"
 
@@ -15,67 +16,111 @@
 #define writew(addr, val) (*(volatile u16 *)(addr) = (val))
 #define writel(addr, val) (*(volatile u32 *)(addr) = (val))
 
+static inline u32 load_u32le(const u8 *p)
+{
+	u32 v;
+	memcpy(&v, p, 4);
+	return v;
+}
+
+/* Dispatch bpp once outside loops; each case is a specialized tight loop. */
 void Screen::drawSixelCell(u32 x, u32 y, const u8 *pixmap, u32 bg_pixel)
 {
 	if (!pixmap || !mVMemBase) return;
 
 	u32 cell_w = FW(1);
 	u32 cell_h = FH(1);
-	u32 bytes_per_pixel = (mBitsPerPixel == 15) ? 2 : (mBitsPerPixel >> 3);
 
-	for (u32 py = 0; py < cell_h; py++) {
-		u32 abs_y = y + py;
-		if (abs_y >= mHeight) break;
+	u32 draw_w = cell_w, draw_h = cell_h;
+	if (x + draw_w > mWidth)  draw_w = mWidth - x;
+	if (y + draw_h > mHeight) draw_h = mHeight - y;
+	if (!draw_w || !draw_h) return;
 
-		for (u32 px = 0; px < cell_w; px++) {
-			u32 abs_x = x + px;
-			if (abs_x >= mWidth) break;
+	u32 row_skip = (cell_w - draw_w) * 4;
+	const u8 *src = pixmap;
 
-			// Read 32-bit BGRA pixel from pixmap
-			u32 pixel_val = *(const u32 *)(pixmap + (py * cell_w + px) * 4);
+	/* prefetch first two rows of source */
+	__builtin_prefetch(src, 0, 3);
+	if (cell_w * 4 < 256)
+		__builtin_prefetch(src + cell_w * 4, 0, 3);
 
-			// Transparent pixel (A=0): use background
-			if (pixel_val == 0) {
-				u32 offset = abs_y * mBytesPerLine + abs_x * bytes_per_pixel;
-				u8 *dst = mVMemBase + offset;
-				switch (bytes_per_pixel) {
-				case 1: writeb(dst, bg_pixel); break;
-				case 2: writew(dst, (u16)bg_pixel); break;
-				case 4: writel(dst, bg_pixel); break;
-				}
-				continue;
+	switch (mBitsPerPixel) {
+	case 8: {
+		u8 bg8 = (u8)bg_pixel;
+		for (u32 py = 0; py < draw_h; py++) {
+			u8 *dst = mVMemBase + (y + py) * mBytesPerLine + x;
+			u8 *end = dst + draw_w;
+			/* prefetch destination 2 rows ahead */
+			if (py + 2 < draw_h)
+				__builtin_prefetch(mVMemBase + (y + py + 2) * mBytesPerLine + x, 1, 3);
+			for (; dst < end; dst++, src += 4) {
+				u32 p = load_u32le(src);
+				if (p == 0) { *dst = bg8; continue; }
+				u8 r = (p >> 16) & 0xFF;
+				u8 g = (p >> 8) & 0xFF;
+				u8 b = p & 0xFF;
+				*dst = (r * 77 + g * 150 + b * 29) >> 8;
 			}
-
-			u8 r = (pixel_val >> 16) & 0xFF;
-			u8 g = (pixel_val >> 8) & 0xFF;
-			u8 b = pixel_val & 0xFF;
-
-			u32 offset = abs_y * mBytesPerLine + abs_x * bytes_per_pixel;
-			u8 *dst = mVMemBase + offset;
-
-			switch (mBitsPerPixel) {
-			case 8: {
-				u8 gray = (r * 77 + g * 150 + b * 29) >> 8;
-				writeb(dst, gray);
-				break;
-			}
-			case 15: {
-				u16 pixel = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
-				writew(dst, pixel);
-				break;
-			}
-			case 16: {
-				u16 pixel = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
-				writew(dst, pixel);
-				break;
-			}
-			case 32:
-			default: {
-				u32 pixel = (r << 16) | (g << 8) | b;
-				writel(dst, pixel);
-				break;
-			}
-			}
+			src += row_skip;
 		}
+		break;
+	}
+	case 15: {
+		u16 bg16 = (u16)bg_pixel;
+		for (u32 py = 0; py < draw_h; py++) {
+			u16 *dst = (u16 *)(mVMemBase + (y + py) * mBytesPerLine + x * 2);
+			u16 *end = dst + draw_w;
+			if (py + 2 < draw_h)
+				__builtin_prefetch((u16 *)(mVMemBase + (y + py + 2) * mBytesPerLine) + x, 1, 3);
+			for (; dst < end; dst++, src += 4) {
+				u32 p = load_u32le(src);
+				if (p == 0) { *dst = bg16; continue; }
+				u8 r = (p >> 16) & 0xFF;
+				u8 g = (p >> 8) & 0xFF;
+				u8 b = p & 0xFF;
+				*dst = (u16)(((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3));
+			}
+			src += row_skip;
+		}
+		break;
+	}
+	case 16: {
+		u16 bg16 = (u16)bg_pixel;
+		for (u32 py = 0; py < draw_h; py++) {
+			u16 *dst = (u16 *)(mVMemBase + (y + py) * mBytesPerLine + x * 2);
+			u16 *end = dst + draw_w;
+			if (py + 2 < draw_h)
+				__builtin_prefetch((u16 *)(mVMemBase + (y + py + 2) * mBytesPerLine) + x, 1, 3);
+			for (; dst < end; dst++, src += 4) {
+				u32 p = load_u32le(src);
+				if (p == 0) { *dst = bg16; continue; }
+				u8 r = (p >> 16) & 0xFF;
+				u8 g = (p >> 8) & 0xFF;
+				u8 b = p & 0xFF;
+				*dst = (u16)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+			}
+			src += row_skip;
+		}
+		break;
+	}
+	case 32:
+	default: {
+		for (u32 py = 0; py < draw_h; py++) {
+			u32 *dst = (u32 *)(mVMemBase + (y + py) * mBytesPerLine + x * 4);
+			u32 *end = dst + draw_w;
+			if (py + 2 < draw_h)
+				__builtin_prefetch((u32 *)(mVMemBase + (y + py + 2) * mBytesPerLine) + x, 1, 3);
+			for (; dst < end; dst++, src += 4) {
+				u32 p = load_u32le(src);
+				if (p == 0) { *dst = bg_pixel; continue; }
+				u8 r = (p >> 16) & 0xFF;
+				u8 g = (p >> 8) & 0xFF;
+				u8 b = p & 0xFF;
+				*dst = (r << 16) | (g << 8) | b;
+			}
+			src += row_skip;
+		}
+		break;
+	}
 	}
 }

@@ -27,9 +27,9 @@
 #define NR_COLORS 256
 
 struct RenderColor {
-	u32 pixel;         // pre-computed framebuffer pixel value
-	const Color* rgb;  // RGB for alpha blending (palette or direct)
-	u8 index;          // palette index, or 255 for direct colors
+	u32 pixel;  // pre-computed framebuffer pixel value
+	u8 red, green, blue;  // inlined RGB for alpha blending (avoids pointer chase)
+	u8 index;   // palette index, or 255 for direct colors
 };
 
 typedef enum { Rotate0 = 0, Rotate90, Rotate180, Rotate270 } RotateType;

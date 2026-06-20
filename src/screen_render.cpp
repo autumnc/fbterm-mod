@@ -163,12 +163,25 @@ void Screen::fillXBg(u32 x, u32 y, u32 w, u32 pixel)
 
 void Screen::draw8(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap)
 {
-	bool isfg;
 	u8 *dst = mVMemBase + y * mBytesPerLine + x * bytes_per_pixel;
+	u32 fg8 = (u8)(fg.pixel & 0xff);
+	u32 bg8 = (u8)(bg.pixel & 0xff);
+
+	/* process 4 pixels per iteration: read u32, extract 4 bytes */
+	for (; w >= 4; w -= 4, pixmap += 4, dst += 4) {
+		u32 pix4;
+		memcpy(&pix4, pixmap, 4);
+
+		writeb(dst + 0, (pix4 & 0x80) ? fg8 : bg8);
+		writeb(dst + 1, (pix4 & 0x8000) ? fg8 : bg8);
+		writeb(dst + 2, (pix4 & 0x800000) ? fg8 : bg8);
+		writeb(dst + 3, (pix4 & 0x80000000) ? fg8 : bg8);
+
+		if (w >= 8) __builtin_prefetch(pixmap + 8, 0, 3);
+	}
 
 	for (; w--; pixmap++, dst++) {
-		isfg = (*pixmap & 0x80);
-		writeb(dst, isfg ? fg.pixel : bg.pixel);
+		writeb(dst, (*pixmap & 0x80) ? fg8 : bg8);
 	}
 }
 
@@ -179,86 +192,216 @@ void Screen::draw8Bg(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderCol
 		return;
 	}
 
-	bool isfg;
 	u32 offset = y * mBytesPerLine + x * bytes_per_pixel;
 	u8 *dst = mVMemBase + offset;
 	u8 *bgimg = bgimage_mem + offset;
+	u32 fg8 = (u8)(fg.pixel & 0xff);
+
+	for (; w >= 4; w -= 4, pixmap += 4, dst += 4, bgimg += 4) {
+		u32 pix4;
+		memcpy(&pix4, pixmap, 4);
+
+		writeb(dst + 0, (pix4 & 0x80) ? fg8 : bgimg[0]);
+		writeb(dst + 1, (pix4 & 0x8000) ? fg8 : bgimg[1]);
+		writeb(dst + 2, (pix4 & 0x800000) ? fg8 : bgimg[2]);
+		writeb(dst + 3, (pix4 & 0x80000000) ? fg8 : bgimg[3]);
+
+		if (w >= 8) __builtin_prefetch(pixmap + 8, 0, 3);
+	}
 
 	for (; w--; pixmap++, dst++, bgimg++) {
-		isfg = (*pixmap & 0x80);
-		writeb(dst, isfg ? fg.pixel : (*bgimg));
+		writeb(dst, (*pixmap & 0x80) ? fg8 : (*bgimg));
 	}
 }
 
-#define drawX(bits, lred, lgreen, lblue, type, fbwrite) \
- \
-void Screen::draw##bits(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap) \
-{ \
-	u8 red, green, blue; \
-	u8 pixel; \
-	type color; \
-	type *dst = (type *)(mVMemBase + y * mBytesPerLine + x * bytes_per_pixel); \
- \
-	for (; w--; pixmap++, dst++) { \
-		pixel = *pixmap; \
- \
-		if (!pixel) fbwrite(dst, bg.pixel); \
-		else if (pixel == 0xff) fbwrite(dst, fg.pixel); \
-		else { \
-			red = bg.rgb->red + (((fg.rgb->red - bg.rgb->red) * pixel) >> 8); \
-			green = bg.rgb->green + (((fg.rgb->green - bg.rgb->green) * pixel) >> 8); \
-			blue = bg.rgb->blue + (((fg.rgb->blue - bg.rgb->blue) * pixel) >> 8); \
- \
-			color = ((red >> (8 - lred) << (lgreen + lblue)) | (green >> (8 - lgreen) << lblue) | (blue >> (8 - lblue))); \
-			fbwrite(dst, color); \
+	#define drawX(bits, lred, lgreen, lblue, type, fbwrite) \
+	 \
+	void Screen::draw##bits(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap) \
+	{ \
+		type *dst = (type *)(mVMemBase + y * mBytesPerLine + x * bytes_per_pixel); \
+		const type fgp = (type)fg.pixel; \
+		const type bgp = (type)bg.pixel; \
+		const u32 fr = fg.red, fgr_ = fg.green, fb_ = fg.blue; \
+		const u32 br = bg.red, bg_ = bg.green, bb = bg.blue; \
+		const s32 dr = (s32)fr - (s32)br; \
+		const s32 dg = (s32)fgr_ - (s32)bg_; \
+		const s32 db = (s32)fb_ - (s32)bb; \
+	 \
+		u32 pix4, px, r_, g_, b_; \
+		type c; \
+	 \
+		for (; w >= 4; w -= 4, pixmap += 4, dst += 4) { \
+			memcpy(&pix4, pixmap, 4); \
+	 \
+			px = pix4 & 0xff; \
+			if (!px) { fbwrite(dst + 0, bgp); } \
+			else if (px == 0xff) { fbwrite(dst + 0, fgp); } \
+			else { \
+				r_ = br + ((dr * (s32)px) >> 8); \
+				g_ = bg_ + ((dg * (s32)px) >> 8); \
+				b_ = bb + ((db * (s32)px) >> 8); \
+				c = (type)(((r_ >> (8 - lred)) << (lgreen + lblue)) | ((g_ >> (8 - lgreen)) << lblue) | (b_ >> (8 - lblue))); \
+				fbwrite(dst + 0, c); \
+			} \
+	 \
+			px = (pix4 >> 8) & 0xff; \
+			if (!px) { fbwrite(dst + 1, bgp); } \
+			else if (px == 0xff) { fbwrite(dst + 1, fgp); } \
+			else { \
+				r_ = br + ((dr * (s32)px) >> 8); \
+				g_ = bg_ + ((dg * (s32)px) >> 8); \
+				b_ = bb + ((db * (s32)px) >> 8); \
+				c = (type)(((r_ >> (8 - lred)) << (lgreen + lblue)) | ((g_ >> (8 - lgreen)) << lblue) | (b_ >> (8 - lblue))); \
+				fbwrite(dst + 1, c); \
+			} \
+	 \
+			px = (pix4 >> 16) & 0xff; \
+			if (!px) { fbwrite(dst + 2, bgp); } \
+			else if (px == 0xff) { fbwrite(dst + 2, fgp); } \
+			else { \
+				r_ = br + ((dr * (s32)px) >> 8); \
+				g_ = bg_ + ((dg * (s32)px) >> 8); \
+				b_ = bb + ((db * (s32)px) >> 8); \
+				c = (type)(((r_ >> (8 - lred)) << (lgreen + lblue)) | ((g_ >> (8 - lgreen)) << lblue) | (b_ >> (8 - lblue))); \
+				fbwrite(dst + 2, c); \
+			} \
+	 \
+			px = pix4 >> 24; \
+			if (!px) { fbwrite(dst + 3, bgp); } \
+			else if (px == 0xff) { fbwrite(dst + 3, fgp); } \
+			else { \
+				r_ = br + ((dr * (s32)px) >> 8); \
+				g_ = bg_ + ((dg * (s32)px) >> 8); \
+				b_ = bb + ((db * (s32)px) >> 8); \
+				c = (type)(((r_ >> (8 - lred)) << (lgreen + lblue)) | ((g_ >> (8 - lgreen)) << lblue) | (b_ >> (8 - lblue))); \
+				fbwrite(dst + 3, c); \
+			} \
+	 \
+			if (w >= 8) __builtin_prefetch(pixmap + 8, 0, 3); \
 		} \
-	} \
-}
-
-drawX(15, 5, 5, 5, u16, writew)
-drawX(16, 5, 6, 5, u16, writew)
-drawX(32, 8, 8, 8, u32, writel)
-
-#define drawXBg(bits, lred, lgreen, lblue, type, fbwrite) \
- \
-void Screen::draw##bits##Bg(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap) \
-{ \
-	if (bg.index != bgcolor) { \
-		draw##bits(x, y, w, fg, bg, pixmap); \
-		return; \
-	} \
- \
-	u8 red, green, blue; \
-	u8 redbg, greenbg, bluebg; \
-	u8 pixel; \
-	type color; \
- \
-	u32 offset = y * mBytesPerLine + x * bytes_per_pixel; \
-	type *dst = (type *)(mVMemBase + offset); \
-	type *bgimg = (type *)(bgimage_mem + offset); \
- \
-	for (; w--; pixmap++, dst++, bgimg++) { \
-		pixel = *pixmap; \
- \
-		if (!pixel) fbwrite(dst, *bgimg); \
-		else if (pixel == 0xff) fbwrite(dst, fg.pixel); \
-		else { \
-			color = *bgimg; \
- \
-			redbg = ((color >> (lgreen + lblue)) & ((1 << lred) - 1)) << (8 - lred); \
-			greenbg = ((color >> lblue) & ((1 << lgreen) - 1)) << (8 - lgreen); \
-			bluebg = (color & ((1 << lblue) - 1)) << (8 - lblue); \
- \
-			red = redbg + (((fg.rgb->red - redbg) * pixel) >> 8); \
-			green = greenbg + (((fg.rgb->green - greenbg) * pixel) >> 8); \
-			blue = bluebg + (((fg.rgb->blue - bluebg) * pixel) >> 8); \
- \
-			color = ((red >> (8 - lred) << (lgreen + lblue)) | (green >> (8 - lgreen) << lblue) | (blue >> (8 - lblue))); \
-			fbwrite(dst, color); \
+	 \
+		u8 pixel; \
+		for (; w--; pixmap++, dst++) { \
+			pixel = *pixmap; \
+			if (!pixel) fbwrite(dst, bgp); \
+			else if (pixel == 0xff) fbwrite(dst, fgp); \
+			else { \
+				r_ = br + ((dr * pixel) >> 8); \
+				g_ = bg_ + ((dg * pixel) >> 8); \
+				b_ = bb + ((db * pixel) >> 8); \
+				c = (type)(((r_ >> (8 - lred)) << (lgreen + lblue)) | ((g_ >> (8 - lgreen)) << lblue) | (b_ >> (8 - lblue))); \
+				fbwrite(dst, c); \
+			} \
 		} \
-	} \
-}
+	}
+\
+	drawX(15, 5, 5, 5, u16, writew)
+	drawX(16, 5, 6, 5, u16, writew)
+	drawX(32, 8, 8, 8, u32, writel)
 
-drawXBg(15, 5, 5, 5, u16, writew)
-drawXBg(16, 5, 6, 5, u16, writew)
-drawXBg(32, 8, 8, 8, u32, writel)
+	#define drawXBg(bits, lred, lgreen, lblue, type, fbwrite) \
+	 \
+	void Screen::draw##bits##Bg(u32 x, u32 y, u32 w, const RenderColor& fg, const RenderColor& bg, u8 *pixmap) \
+	{ \
+		if (bg.index != bgcolor) { \
+			draw##bits(x, y, w, fg, bg, pixmap); \
+			return; \
+		} \
+	 \
+		u32 offset = y * mBytesPerLine + x * bytes_per_pixel; \
+		type *dst = (type *)(mVMemBase + offset); \
+		type *bgimg = (type *)(bgimage_mem + offset); \
+		const type fgp = (type)fg.pixel; \
+		const u32 fr = fg.red, fgr_ = fg.green, fb_ = fg.blue; \
+	 \
+		u32 pix4, px, r_, g_, b_, rbg, gbg, bbg; \
+		type c, bgi; \
+	 \
+		for (; w >= 4; w -= 4, pixmap += 4, dst += 4, bgimg += 4) { \
+			memcpy(&pix4, pixmap, 4); \
+	 \
+			px = pix4 & 0xff; \
+			if (!px) { fbwrite(dst + 0, bgimg[0]); } \
+			else if (px == 0xff) { fbwrite(dst + 0, fgp); } \
+			else { \
+				bgi = bgimg[0]; \
+				rbg = ((bgi >> (lgreen + lblue)) & ((1 << lred) - 1)) << (8 - lred); \
+				gbg = ((bgi >> lblue) & ((1 << lgreen) - 1)) << (8 - lgreen); \
+				bbg = (bgi & ((1 << lblue) - 1)) << (8 - lblue); \
+				r_ = rbg + (((fr - rbg) * (s32)px) >> 8); \
+				g_ = gbg + (((fgr_ - gbg) * (s32)px) >> 8); \
+				b_ = bbg + (((fb_ - bbg) * (s32)px) >> 8); \
+				c = (type)(((r_ >> (8 - lred)) << (lgreen + lblue)) | ((g_ >> (8 - lgreen)) << lblue) | (b_ >> (8 - lblue))); \
+				fbwrite(dst + 0, c); \
+			} \
+	 \
+			px = (pix4 >> 8) & 0xff; \
+			if (!px) { fbwrite(dst + 1, bgimg[1]); } \
+			else if (px == 0xff) { fbwrite(dst + 1, fgp); } \
+			else { \
+				bgi = bgimg[1]; \
+				rbg = ((bgi >> (lgreen + lblue)) & ((1 << lred) - 1)) << (8 - lred); \
+				gbg = ((bgi >> lblue) & ((1 << lgreen) - 1)) << (8 - lgreen); \
+				bbg = (bgi & ((1 << lblue) - 1)) << (8 - lblue); \
+				r_ = rbg + (((fr - rbg) * (s32)px) >> 8); \
+				g_ = gbg + (((fgr_ - gbg) * (s32)px) >> 8); \
+				b_ = bbg + (((fb_ - bbg) * (s32)px) >> 8); \
+				c = (type)(((r_ >> (8 - lred)) << (lgreen + lblue)) | ((g_ >> (8 - lgreen)) << lblue) | (b_ >> (8 - lblue))); \
+				fbwrite(dst + 1, c); \
+			} \
+	 \
+			px = (pix4 >> 16) & 0xff; \
+			if (!px) { fbwrite(dst + 2, bgimg[2]); } \
+			else if (px == 0xff) { fbwrite(dst + 2, fgp); } \
+			else { \
+				bgi = bgimg[2]; \
+				rbg = ((bgi >> (lgreen + lblue)) & ((1 << lred) - 1)) << (8 - lred); \
+				gbg = ((bgi >> lblue) & ((1 << lgreen) - 1)) << (8 - lgreen); \
+				bbg = (bgi & ((1 << lblue) - 1)) << (8 - lblue); \
+				r_ = rbg + (((fr - rbg) * (s32)px) >> 8); \
+				g_ = gbg + (((fgr_ - gbg) * (s32)px) >> 8); \
+				b_ = bbg + (((fb_ - bbg) * (s32)px) >> 8); \
+				c = (type)(((r_ >> (8 - lred)) << (lgreen + lblue)) | ((g_ >> (8 - lgreen)) << lblue) | (b_ >> (8 - lblue))); \
+				fbwrite(dst + 2, c); \
+			} \
+	 \
+			px = pix4 >> 24; \
+			if (!px) { fbwrite(dst + 3, bgimg[3]); } \
+			else if (px == 0xff) { fbwrite(dst + 3, fgp); } \
+			else { \
+				bgi = bgimg[3]; \
+				rbg = ((bgi >> (lgreen + lblue)) & ((1 << lred) - 1)) << (8 - lred); \
+				gbg = ((bgi >> lblue) & ((1 << lgreen) - 1)) << (8 - lgreen); \
+				bbg = (bgi & ((1 << lblue) - 1)) << (8 - lblue); \
+				r_ = rbg + (((fr - rbg) * (s32)px) >> 8); \
+				g_ = gbg + (((fgr_ - gbg) * (s32)px) >> 8); \
+				b_ = bbg + (((fb_ - bbg) * (s32)px) >> 8); \
+				c = (type)(((r_ >> (8 - lred)) << (lgreen + lblue)) | ((g_ >> (8 - lgreen)) << lblue) | (b_ >> (8 - lblue))); \
+				fbwrite(dst + 3, c); \
+			} \
+	 \
+			if (w >= 8) __builtin_prefetch(pixmap + 8, 0, 3); \
+		} \
+	 \
+		u8 pixel; \
+		for (; w--; pixmap++, dst++, bgimg++) { \
+			pixel = *pixmap; \
+			if (!pixel) fbwrite(dst, *bgimg); \
+			else if (pixel == 0xff) fbwrite(dst, fgp); \
+			else { \
+				bgi = *bgimg; \
+				rbg = ((bgi >> (lgreen + lblue)) & ((1 << lred) - 1)) << (8 - lred); \
+				gbg = ((bgi >> lblue) & ((1 << lgreen) - 1)) << (8 - lgreen); \
+				bbg = (bgi & ((1 << lblue) - 1)) << (8 - lblue); \
+				r_ = rbg + (((fr - rbg) * pixel) >> 8); \
+				g_ = gbg + (((fgr_ - gbg) * pixel) >> 8); \
+				b_ = bbg + (((fb_ - bbg) * pixel) >> 8); \
+				c = (type)(((r_ >> (8 - lred)) << (lgreen + lblue)) | ((g_ >> (8 - lgreen)) << lblue) | (b_ >> (8 - lblue))); \
+				fbwrite(dst, c); \
+			} \
+		} \
+	}
+\
+	drawXBg(15, 5, 5, 5, u16, writew)
+	drawXBg(16, 5, 6, 5, u16, writew)
+	drawXBg(32, 8, 8, 8, u32, writel)

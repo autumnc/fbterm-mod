@@ -454,27 +454,33 @@ RenderColor Screen::resolveColor(u8 index, bool direct) const
 {
 	RenderColor rc;
 	if (direct && mDirectColorTable) {
-		rc.rgb = &mDirectColorTable[index];
+		const Color *rgb = &mDirectColorTable[index];
+		rc.red = rgb->red;
+		rc.green = rgb->green;
+		rc.blue = rgb->blue;
 		rc.index = 255;
 		switch (mBitsPerPixel) {
 		case 8:
 			rc.pixel = (index << 24) | (index << 16) | (index << 8) | index;
 			break;
 		case 15:
-			rc.pixel = ((rc.rgb->red >> 3) << 10) | ((rc.rgb->green >> 3) << 5) | (rc.rgb->blue >> 3);
+			rc.pixel = ((rc.red >> 3) << 10) | ((rc.green >> 3) << 5) | (rc.blue >> 3);
 			rc.pixel |= rc.pixel << 16;
 			break;
 		case 16:
-			rc.pixel = ((rc.rgb->red >> 3) << 11) | ((rc.rgb->green >> 2) << 5) | (rc.rgb->blue >> 3);
+			rc.pixel = ((rc.red >> 3) << 11) | ((rc.green >> 2) << 5) | (rc.blue >> 3);
 			rc.pixel |= rc.pixel << 16;
 			break;
 		default:
-			rc.pixel = (rc.rgb->red << 16) | (rc.rgb->green << 8) | rc.rgb->blue;
+			rc.pixel = (rc.red << 16) | (rc.green << 8) | rc.blue;
 			break;
 		}
 	} else {
 		rc.pixel = mFillColors[index];
-		rc.rgb = &mPalette[index];
+		const Color *rgb2 = &mPalette[index];
+		rc.red = rgb2->red;
+		rc.green = rgb2->green;
+		rc.blue = rgb2->blue;
 		rc.index = index;
 	}
 	return rc;
