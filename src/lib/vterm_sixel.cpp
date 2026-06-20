@@ -412,6 +412,13 @@ void VTerm::sixel_copy_to_cells()
 	int lines = (img_h + mCellH - 1) / mCellH;
 
 	if (cols > (int)width) cols = width;
+
+	// Auto-scroll to make room if image extends past scroll bottom
+	while (lines + cursor_y > scroll_bot + 1) {
+		scroll_region(scroll_top, scroll_bot, 1);
+		update();
+	}
+
 	if (lines + cursor_y > (int)height) lines = height - cursor_y;
 
 	DBG("copy: canvas=%dx%d img=%dx%d cell=%ux%u cols=%d lines=%d cursor=(%u,%u) term=%ux%u\n",
@@ -422,9 +429,6 @@ void VTerm::sixel_copy_to_cells()
 	for (int cy = 0; cy < lines; cy++) {
 		int screen_y = start_y + cy;
 		if (screen_y >= (int)height) break;
-
-		// Handle auto-scroll if needed
-		if (screen_y > scroll_bot) break;
 
 		u32 yp = linenumbers[screen_y] * max_width;
 
