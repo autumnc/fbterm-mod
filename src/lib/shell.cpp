@@ -31,6 +31,7 @@
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include "shell.h"
+#include "../font.h"
 
 void waitChildProcessExit(s32 pid)
 {
@@ -123,10 +124,15 @@ void Shell::resize(u16 w, u16 h)
 	VTerm::resize(w, h);
 
 	struct winsize size;
-	size.ws_xpixel = 0;
-	size.ws_ypixel = 0;
 	size.ws_col = w;
 	size.ws_row = h;
+	if (Font::instance()) {
+		size.ws_xpixel = Font::instance()->width() * w;
+		size.ws_ypixel = Font::instance()->height() * h;
+	} else {
+		size.ws_xpixel = 0;
+		size.ws_ypixel = 0;
+	}
 	ioctl(fd(), TIOCSWINSZ, &size);
 }
 
