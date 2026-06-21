@@ -906,6 +906,12 @@ void VTerm::move_cursor(u16 x, u16 y)
 	if (y>=height) y = height-1;
 	cursor_x = x;
 	cursor_y = y;
+
+	if (cursor_x > 0) {
+		u32 yp = linenumbers[cursor_y] * max_width;
+		if (attrs[yp + cursor_x].type == CharAttr::DoubleRight)
+			cursor_x--;
+	}
 }
 
 u16 VTerm::mode(ModeType type)

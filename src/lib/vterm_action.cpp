@@ -38,7 +38,14 @@ void VTerm::lf()
 
 void VTerm::bs()
 {
-	if (cursor_x) move_cursor(cursor_x - 1, cursor_y);
+	if (cursor_x) {
+		u16 x = cursor_x - 1;
+		u32 yp = linenumbers[cursor_y] * max_width;
+		if (attrs[yp + x].type == CharAttr::DoubleRight) {
+			if (x > 0) x--;
+		}
+		move_cursor(x, cursor_y);
+	}
 }
 
 void VTerm::bell()
@@ -145,6 +152,9 @@ void VTerm::cursor_left()
 	if (cursor_x < n) x = 0;
 	else x = cursor_x - n;
 
+	u32 yp = linenumbers[cursor_y] * max_width;
+	if (x > 0 && attrs[yp + x].type == CharAttr::DoubleRight) x--;
+
 	move_cursor(x, cursor_y);
 }
 
@@ -157,6 +167,9 @@ void VTerm::cursor_right()
 
 	x = cursor_x + n;
 	if (x >= width) x = width - 1;
+
+	u32 yp = linenumbers[cursor_y] * max_width;
+	if (x < width - 1 && attrs[yp + x].type == CharAttr::DoubleRight) x++;
 
 	move_cursor(x, cursor_y);
 }
