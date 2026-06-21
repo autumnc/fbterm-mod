@@ -24,6 +24,11 @@
 #include "type.h"
 #include "instance.h"
 
+#include "config.h"
+#ifdef ENABLE_RGA
+#include "rga_adapter.h"
+#endif
+
 #define NR_COLORS 256
 
 struct RenderColor {
@@ -128,7 +133,11 @@ private:
 	Color mCustomBackgroundColor;
 
 		u8 *mBackBuffer;
-		bool mDirty;
+
+#ifdef ENABLE_RGA
+		bool mRgaActive;
+		void markDirty(u32 x, u32 y, u32 w, u32 h);
+#endif
 
 };
 #endif

@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.61])
-AC_INIT([fbterm-mod], [1.14])
+AC_INIT([fbterm-mod], [1.15])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/fbterm.cpp])
 AC_CONFIG_HEADERS([config.h])
@@ -39,6 +39,11 @@ AC_ARG_ENABLE(neon,
               AC_HELP_STRING([--enable-neon], [enable ARM NEON SIMD optimizations [[default=auto]]]),
               [NEON="$enableval"],
               [NEON=auto])
+
+AC_ARG_ENABLE(rga,
+              AC_HELP_STRING([--enable-rga], [enable Rockchip RGA hardware acceleration [[default=auto]]]),
+              [RGA="$enableval"],
+              [RGA=auto])
 
 # ARM NEON detection
 HAVE_ARM_NEON=no
@@ -124,8 +129,48 @@ if test x"$SIGNALFD" = xauto -a x"$cross_compiling" = xno; then
   )
 fi
 
+RGA_WARN=
+if test x"$RGA" != xno; then
+	AC_CHECK_HEADERS([rga/im2d.h rga/RgaApi.h rga/RockchipRga.h])
+	AC_CHECK_LIB([rga], [imcopy_t], [have_im2d=yes], [have_im2d=no])
+	AC_CHECK_LIB([rga], [c_RkRgaBlit], [have_old_rga=yes], [have_old_rga=no])
+
+	if test x"$have_im2d" = xyes -a x"$ac_cv_header_rga_im2d_h" = xyes; then
+		RGA_MODE=im2d
+	elif test x"$have_old_rga" = xyes; then
+		if test x"$ac_cv_header_rga_RockchipRga_h" = xyes; then
+			RGA_MODE=old_rga_rockchip
+		elif test x"$ac_cv_header_rga_RgaApi_h" = xyes; then
+			RGA_MODE=old_rga_api
+		else
+			RGA_MODE=none
+		fi
+	else
+		RGA_MODE=none
+	fi
+
+	if test x"$RGA" = xauto; then
+		if test x"$RGA_MODE" != xnone; then
+			RGA=yes
+		else
+			RGA=no
+			RGA_WARN=yes
+		fi
+	elif test x"$RGA" = xyes; then
+		if test x"$RGA_MODE" = xnone; then
+			AC_MSG_ERROR(can't find usable librga (need im2d or RgaApi)! install librga from https://github.com/airockchip/librga)
+		fi
+	fi
+fi
+
 AM_CONDITIONAL(VESA, test x"$VESA" = xyes)
 AM_CONDITIONAL(HAVE_ARM_NEON, test x"$HAVE_ARM_NEON" = xyes)
+AM_CONDITIONAL(ENABLE_RGA, test x"$RGA" = xyes)
+
+RGA_LIBS=
+[[ "$RGA" = "yes" ]] && RGA_LIBS="-lrga"
+AC_SUBST([RGA_LIBS], ["$RGA_LIBS"])
+AC_SUBST([RGA_MODE], ["$RGA_MODE"])
 
 x86_LIBS=
 [[ "$VESA" = "yes" ]] && x86_LIBS="-lx86"
@@ -135,6 +180,9 @@ AH_TEMPLATE([ENABLE_GPM])
 AH_TEMPLATE([ENABLE_VESA])
 AH_TEMPLATE([HAVE_EPOLL])
 AH_TEMPLATE([HAVE_ARM_NEON])
+AH_TEMPLATE([ENABLE_RGA])
+AH_TEMPLATE([RGA_USE_IM2D])
+AH_TEMPLATE([RGA_USE_OLD_API])
 AH_TEMPLATE([HAVE_SIGNALFD])
 
 [[ "$GPM" = "yes" ]] && AC_DEFINE([ENABLE_GPM])
@@ -142,10 +190,17 @@ AH_TEMPLATE([HAVE_SIGNALFD])
 [[ "$EPOLL" = "yes" ]] && AC_DEFINE([HAVE_EPOLL])
 [[ "$SIGNALFD" = "yes" ]] && AC_DEFINE([HAVE_SIGNALFD])
 [[ "$HAVE_ARM_NEON" = "yes" ]] && AC_DEFINE([HAVE_ARM_NEON])
+[[ "$RGA" = "yes" ]] && AC_DEFINE([ENABLE_RGA])
+if test x"$RGA_MODE" = xim2d; then
+	AC_DEFINE([RGA_USE_IM2D])
+elif test x"$RGA" = xyes; then
+	AC_DEFINE([RGA_USE_OLD_API])
+fi
 
 AC_CONFIG_FILES([Makefile src/Makefile src/lib/Makefile im/Makefile terminfo/Makefile doc/Makefile doc/fbterm.1])
 AC_CONFIG_LINKS([im/input_key.h:src/input_key.h im/immessage.h:src/immessage.h])
 AC_OUTPUT
 
 [[ "$GPM_WARN" = "yes" ]] && AC_MSG_WARN([gpm.h doesn't exist! gpm mouse support will be disabled!])
+[[ "$RGA_WARN" = "yes" ]] && AC_MSG_WARN([rga/im2d.h doesn't exist! RGA hardware acceleration will be disabled!])
 [[ "$VESA_WARN" = "yes" ]] && AC_MSG_WARN([libx86.h doesn't exist! VESA support will be disabled!]) || exit 0

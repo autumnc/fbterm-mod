@@ -4,7 +4,13 @@
 #undef ENABLE_GPM
 
 /* */
+#undef ENABLE_RGA
+
+/* */
 #undef ENABLE_VESA
+
+/* */
+#undef HAVE_ARM_NEON
 
 /* */
 #undef HAVE_EPOLL
@@ -59,6 +65,15 @@
 
 /* Define to 1 if you have the 'nl_langinfo' function. */
 #undef HAVE_NL_LANGINFO
+
+/* Define to 1 if you have the <rga/im2d.h> header file. */
+#undef HAVE_RGA_IM2D_H
+
+/* Define to 1 if you have the <rga/RgaApi.h> header file. */
+#undef HAVE_RGA_RGAAPI_H
+
+/* Define to 1 if you have the <rga/RockchipRga.h> header file. */
+#undef HAVE_RGA_ROCKCHIPRGA_H
 
 /* Define to 1 if you have the 'setenv' function. */
 #undef HAVE_SETENV
@@ -166,6 +181,12 @@
 
 /* Define as the return type of signal handlers ('int' or 'void'). */
 #undef RETSIGTYPE
+
+/* */
+#undef RGA_USE_IM2D
+
+/* */
+#undef RGA_USE_OLD_API
 
 /* Define to 1 if all of the C89 standard headers exist (not just the ones
    required in a freestanding environment). This macro is provided for

@@ -40,6 +40,9 @@ void Screen::drawSixelCell(u32 x, u32 y, const u8 *pixmap, u32 bg_pixel)
 	if (y + draw_h > mHeight) draw_h = mHeight - y;
 	if (!draw_w || !draw_h) return;
 
+#ifdef ENABLE_RGA
+	u32 rga_x = x, rga_y = y;
+#endif
 	adjustOffset(x, y);
 
 	u32 row_skip = (cell_w - draw_w) * 4;
@@ -258,4 +261,7 @@ void Screen::drawSixelCell(u32 x, u32 y, const u8 *pixmap, u32 bg_pixel)
 		break;
 	}
 	}
+#ifdef ENABLE_RGA
+	markDirty(rga_x, rga_y, cell_w, cell_h);
+#endif
 }

@@ -107,8 +107,10 @@ Screen::Screen()
 	mRealFbBase = 0;
 	mBackBuffer = 0;
 	mFbMemSize = 0;
-	mDirty = false;
 	mFbFd = -1;
+#ifdef ENABLE_RGA
+	mRgaActive = false;
+#endif
 	mPalette = 0;
 	mHasCustomBackground = false;
 	memset(mFillColors, 0, sizeof(mFillColors));
@@ -147,6 +149,10 @@ void Screen::showInfo(bool verbose)
 	};
 	printf("[screen] driver: %s, mode: %dx%d-%dbpp, scrolling: %s\n",
 		drvId(), mWidth, mHeight, mBitsPerPixel, scrollstr[mScrollType]);
+#ifdef ENABLE_RGA
+	printf("[screen] RGA hardware acceleration: %s\n",
+		RgaAdapter::instance() ? "enabled" : "not available");
+#endif
 }
 
 void Screen::switchVc(bool enter)
@@ -316,6 +322,15 @@ void Screen::setBackgroundColor(const Color *color)
 	}
 }
 
+#ifdef ENABLE_RGA
+void Screen::markDirty(u32 x, u32 y, u32 w, u32 h)
+{
+	if (!mRgaActive || !w || !h) return;
+	RgaAdapter *rga = RgaAdapter::instance();
+	if (rga) rga->addDirtyRect(x, y, w, h);
+}
+#endif
+
 void Screen::fillRectPixel(u32 x, u32 y, u32 w, u32 h, u32 pixel)
 {
 	if (x >= mWidth || y >= mHeight || !w || !h) return;
@@ -325,10 +340,27 @@ void Screen::fillRectPixel(u32 x, u32 y, u32 w, u32 h, u32 pixel)
 	rotateRect(x, y, w, h);
 	adjustOffset(x, y);
 
+#ifdef ENABLE_RGA
+	u32 dirtyX = x, dirtyY = y, dirtyW = w, dirtyH = h;
+	// Use RGA fill for large rectangles to reduce CPU overhead
+	if (mRgaActive && w * h > 4096) {
+		RgaAdapter *rga = RgaAdapter::instance();
+		if (rga && rga->fill(mVMemBase, x, y, w, h,
+				      mWidth, mHeight, mBytesPerLine, mBitsPerPixel, pixel)) {
+			markDirty(dirtyX, dirtyY, dirtyW, dirtyH);
+			return;
+		}
+	}
+#endif
+
 	for (; h--;) {
 		if (mScrollType == YWrap && y > mOffsetMax) y -= mOffsetMax + 1;
 		(this->*fill)(x, y++, w, pixel);
 	}
+
+#ifdef ENABLE_RGA
+	markDirty(dirtyX, dirtyY, dirtyW, dirtyH);
+#endif
 }
 
 void Screen::drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& bg,
@@ -392,9 +424,17 @@ void Screen::drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& b
 	}
 
 	adjustOffset(x, y);
-	for (; nheight--; y++, pixmap += glyph->pitch) {
-		if ((mScrollType == YWrap) && y > mOffsetMax) y -= mOffsetMax + 1;
-		(this->*draw)(x, y, nwidth, fg, bg, pixmap);
+	{
+#ifdef ENABLE_RGA
+		u32 rga_y = y, rga_nheight = nheight;
+#endif
+		for (; nheight--; y++, pixmap += glyph->pitch) {
+			if ((mScrollType == YWrap) && y > mOffsetMax) y -= mOffsetMax + 1;
+			(this->*draw)(x, y, nwidth, fg, bg, pixmap);
+		}
+#ifdef ENABLE_RGA
+		markDirty(x, rga_y, nwidth, rga_nheight);
+#endif
 	}
 	}
 	}
@@ -518,12 +558,39 @@ void Screen::initDoubleBuffer()
 	mBackBuffer = new u8[mFbMemSize];
 	memcpy(mBackBuffer, mRealFbBase, mFbMemSize);
 	mVMemBase = mBackBuffer;
+
+#ifdef ENABLE_RGA
+	RgaAdapter *rga = RgaAdapter::instance();
+	if (rga && rga->isAvailable()) {
+		mRgaActive = true;
+	}
+#endif
 }
 
 void Screen::swapBuffers()
 {
 	if (!mBackBuffer) return;
 
+#ifdef ENABLE_RGA
+	if (mRgaActive) {
+		RgaAdapter *rga = RgaAdapter::instance();
+		if (rga && rga->isAvailable()) {
+			// Try dirty-rect partial flush first
+			if (rga->flushDirtyRects(mBackBuffer, mRealFbBase,
+						  mWidth, mHeight, mBytesPerLine, mBitsPerPixel)) {
+				rga->clearDirtyRects();
+				return;
+			}
+			// Fall back to full-screen RGA copy
+			if (rga->copy(mRealFbBase, mBackBuffer,
+				      mWidth, mHeight, mBytesPerLine, mBitsPerPixel)) {
+				rga->clearDirtyRects();
+				return;
+			}
+		}
+		mRgaActive = false;
+	}
+#endif
 	memcpy(mRealFbBase, mBackBuffer, mFbMemSize);
 }
 

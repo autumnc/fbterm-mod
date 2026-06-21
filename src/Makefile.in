@@ -111,7 +111,7 @@ am_fbterm_mod_OBJECTS = fbterm_mod-fbconfig.$(OBJEXT) \
 	fbterm_mod-improxy.$(OBJEXT) \
 	fbterm_mod-screen_render.$(OBJEXT) \
 	fbterm_mod-screen_sixel.$(OBJEXT) fbterm_mod-fbdev.$(OBJEXT) \
-	fbterm_mod-vesadev.$(OBJEXT)
+	fbterm_mod-vesadev.$(OBJEXT) fbterm_mod-rga_adapter.$(OBJEXT)
 fbterm_mod_OBJECTS = $(am_fbterm_mod_OBJECTS)
 fbterm_mod_DEPENDENCIES = lib/libshell.a
 fbterm_mod_LINK = $(CXXLD) $(fbterm_mod_CXXFLAGS) $(CXXFLAGS) \
@@ -140,6 +140,7 @@ am__depfiles_remade = ./$(DEPDIR)/fbterm_mod-fbconfig.Po \
 	./$(DEPDIR)/fbterm_mod-improxy.Po \
 	./$(DEPDIR)/fbterm_mod-input.Po \
 	./$(DEPDIR)/fbterm_mod-mouse.Po \
+	./$(DEPDIR)/fbterm_mod-rga_adapter.Po \
 	./$(DEPDIR)/fbterm_mod-screen.Po \
 	./$(DEPDIR)/fbterm_mod-screen_render.Po \
 	./$(DEPDIR)/fbterm_mod-screen_sixel.Po \
@@ -284,6 +285,7 @@ LIBS = @LIBS@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+NEON_CFLAGS = @NEON_CFLAGS@
 OBJEXT = @OBJEXT@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
@@ -298,6 +300,8 @@ PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 RANLIB = @RANLIB@
 RELEASE_DATE = @RELEASE_DATE@
+RGA_LIBS = @RGA_LIBS@
+RGA_MODE = @RGA_MODE@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
@@ -360,11 +364,12 @@ top_srcdir = @top_srcdir@
 SUBDIRS = lib
 fbterm_mod_SOURCES = fbconfig.cpp fbconfig.h fbio.cpp fbio.h fbshell.cpp fbshell.h fbshellman.cpp fbshellman.h fbterm.cpp \
 	fbterm.h font.cpp font.h input.cpp input.h input_key.h mouse.cpp mouse.h screen.cpp screen.h improxy.cpp improxy.h \
-	screen_render.cpp screen_sixel.cpp fbdev.cpp fbdev.h vesadev.cpp vesadev.h vbe.h
+	screen_render.cpp screen_sixel.cpp fbdev.cpp fbdev.h vesadev.cpp vesadev.h vbe.h \
+	rga_adapter.cpp rga_adapter.h
 
 EXTRA_fbterm_mod_SOURCES = signalfd.h
 fbterm_mod_CXXFLAGS = -fno-exceptions -fno-rtti -Ilib @FT2_CFLAGS@ @FC_CFLAGS@
-fbterm_mod_LDADD = lib/libshell.a @FT2_LIBS@ @FC_LIBS@ @X86_LIBS@ -lutil
+fbterm_mod_LDADD = lib/libshell.a @FT2_LIBS@ @FC_LIBS@ @X86_LIBS@ @RGA_LIBS@ -lutil
 all: all-recursive
 
 .SUFFIXES:
@@ -461,6 +466,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fbterm_mod-improxy.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fbterm_mod-input.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fbterm_mod-mouse.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fbterm_mod-rga_adapter.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fbterm_mod-screen.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fbterm_mod-screen_render.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fbterm_mod-screen_sixel.Po@am__quote@ # am--include-marker
@@ -682,6 +688,20 @@ fbterm_mod-vesadev.obj: vesadev.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fbterm_mod_CXXFLAGS) $(CXXFLAGS) -c -o fbterm_mod-vesadev.obj `if test -f 'vesadev.cpp'; then $(CYGPATH_W) 'vesadev.cpp'; else $(CYGPATH_W) '$(srcdir)/vesadev.cpp'; fi`
 
+fbterm_mod-rga_adapter.o: rga_adapter.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fbterm_mod_CXXFLAGS) $(CXXFLAGS) -MT fbterm_mod-rga_adapter.o -MD -MP -MF $(DEPDIR)/fbterm_mod-rga_adapter.Tpo -c -o fbterm_mod-rga_adapter.o `test -f 'rga_adapter.cpp' || echo '$(srcdir)/'`rga_adapter.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/fbterm_mod-rga_adapter.Tpo $(DEPDIR)/fbterm_mod-rga_adapter.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='rga_adapter.cpp' object='fbterm_mod-rga_adapter.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fbterm_mod_CXXFLAGS) $(CXXFLAGS) -c -o fbterm_mod-rga_adapter.o `test -f 'rga_adapter.cpp' || echo '$(srcdir)/'`rga_adapter.cpp
+
+fbterm_mod-rga_adapter.obj: rga_adapter.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fbterm_mod_CXXFLAGS) $(CXXFLAGS) -MT fbterm_mod-rga_adapter.obj -MD -MP -MF $(DEPDIR)/fbterm_mod-rga_adapter.Tpo -c -o fbterm_mod-rga_adapter.obj `if test -f 'rga_adapter.cpp'; then $(CYGPATH_W) 'rga_adapter.cpp'; else $(CYGPATH_W) '$(srcdir)/rga_adapter.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/fbterm_mod-rga_adapter.Tpo $(DEPDIR)/fbterm_mod-rga_adapter.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='rga_adapter.cpp' object='fbterm_mod-rga_adapter.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fbterm_mod_CXXFLAGS) $(CXXFLAGS) -c -o fbterm_mod-rga_adapter.obj `if test -f 'rga_adapter.cpp'; then $(CYGPATH_W) 'rga_adapter.cpp'; else $(CYGPATH_W) '$(srcdir)/rga_adapter.cpp'; fi`
+
 # This directory's subdirectories are mostly independent; you can cd
 # into them and run 'make' without going through this Makefile.
 # To change the values of 'make' variables: instead of editing Makefiles,
@@ -892,6 +912,7 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/fbterm_mod-improxy.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-input.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-mouse.Po
+	-rm -f ./$(DEPDIR)/fbterm_mod-rga_adapter.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-screen.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-screen_render.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-screen_sixel.Po
@@ -951,6 +972,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/fbterm_mod-improxy.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-input.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-mouse.Po
+	-rm -f ./$(DEPDIR)/fbterm_mod-rga_adapter.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-screen.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-screen_render.Po
 	-rm -f ./$(DEPDIR)/fbterm_mod-screen_sixel.Po
@@ -991,6 +1013,9 @@ uninstall-am: uninstall-binPROGRAMS
 
 .PRECIOUS: Makefile
 
+
+@HAVE_ARM_NEON_TRUE@fbterm_mod-screen_sixel.$(OBJEXT): CXXFLAGS += @NEON_CFLAGS@
+@HAVE_ARM_NEON_TRUE@fbterm_mod-screen_render.$(OBJEXT): CXXFLAGS += @NEON_CFLAGS@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
