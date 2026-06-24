@@ -537,6 +537,7 @@ void VTerm::set_display_attr()
 			break;
 		case 30 ... 37:
 			char_attr.fcolor = param[n] % 10;
+			char_attr.direct_fg = 0;
 			break;
 		case 39:
 			char_attr.fcolor = cur_fcolor;
@@ -544,6 +545,7 @@ void VTerm::set_display_attr()
 			break;
 		case 40 ... 47:
 			char_attr.bcolor = param[n] % 10;
+			char_attr.direct_bg = 0;
 			break;
 		case 49:
 			char_attr.bcolor = cur_bcolor;
