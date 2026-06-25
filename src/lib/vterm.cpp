@@ -103,6 +103,8 @@ void VTerm::init_state()
 
 VTerm::VTerm(u16 w, u16 h)
 {
+	mDirectColorCount = 0;
+
 	static bool inited = false;
 	if (!inited) {
 		inited = true;
@@ -148,8 +150,6 @@ VTerm::VTerm(u16 w, u16 h)
 	history_full = false;
 	history_save_line = 0;
 	visual_start_line = 0;
-
-	mDirectColorCount = 0;
 
 	mSixelCanvas = 0;
 
