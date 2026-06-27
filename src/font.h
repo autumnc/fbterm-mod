@@ -48,6 +48,7 @@ public:
 
 private:
 	u32 mWidth, mHeight;
+	s32 mDescender;
 };
 
 #endif

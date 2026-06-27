@@ -210,6 +210,7 @@ Font::Font()
 	if (face->face_flags & FT_FACE_FLAG_SCALABLE) {
 		mHeight = face->size->metrics.height >> 6;
 		mWidth = face->size->metrics.max_advance >> 6;
+		mDescender = face->size->metrics.descender >> 6;
 	} else if (face->num_fixed_sizes) {
 		double dsize;
 		FcPatternGetDouble(fontList->fonts[0], FC_PIXEL_SIZE, 0, &dsize);
@@ -226,6 +227,7 @@ Font::Font()
 
 		mHeight = sizes[index].height;
 		mWidth = sizes[index].width;
+		mDescender = face->size->metrics.descender >> 6;
 	}
 
 
@@ -532,7 +534,7 @@ Font::Glyph *Font::getGlyph(u32 unicode, bool bold, bool italic)
 	Glyph *glyph = (Glyph *)new u8[OFFSET(Glyph, pixmap) + nw * nh];
 	memset(glyph->pixmap, 0, nw * nh);
 	glyph->left = (face->glyph->metrics.horiBearingX >> 6) - (s32)extraWidth;
-	glyph->top = mHeight - 1 + (face->size->metrics.descender >> 6) - (face->glyph->metrics.horiBearingY >> 6);
+	glyph->top = mHeight - 1 + mDescender - (face->glyph->metrics.horiBearingY >> 6);
 	glyph->width = (face->glyph->metrics.width >> 6) + extraWidth;
 	glyph->height = face->glyph->metrics.height >> 6;
 	glyph->pitch = nw;
