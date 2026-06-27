@@ -209,7 +209,8 @@ Font::Font()
 
 	if (face->face_flags & FT_FACE_FLAG_SCALABLE) {
 		mHeight = face->size->metrics.height >> 6;
-		mWidth = face->size->metrics.max_advance >> 6;
+		FT_Load_Char(face, ' ', FT_LOAD_DEFAULT);
+		mWidth = face->glyph->advance.x >> 6;
 		mDescender = face->size->metrics.descender >> 6;
 	} else if (face->num_fixed_sizes) {
 		double dsize;
