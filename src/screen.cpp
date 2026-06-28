@@ -363,8 +363,10 @@ void Screen::fillRectPixel(u32 x, u32 y, u32 w, u32 h, u32 pixel)
 #endif
 }
 
-void Screen::drawBoxChar(u32 x, u32 y, u32 w, u32 h, u32 code, u32 pixel)
+void Screen::drawBoxChar(u32 x, u32 y, u32 w, u32 h, u32 code, u32 pixel, u32 bgPixel)
 {
+	fillRectPixel(x, y, w, h, bgPixel);
+
 	const u32 T  = 2;  // single-line thickness
 	const u32 DT = 1;  // double-line each stroke
 	const u32 DG = 1;  // double-line gap
@@ -468,7 +470,7 @@ void Screen::drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& b
 	if (y + h > mHeight) { h = mHeight - y; cellH = h; }
 
 	if (code >= 0x2500 && code <= 0x257F) {
-		drawBoxChar(x, y, w, h, code, fg.pixel);
+		drawBoxChar(x, y, w, h, code, fg.pixel, bg.pixel);
 		return;
 	}
 

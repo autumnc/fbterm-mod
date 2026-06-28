@@ -104,7 +104,7 @@ private:
 	void drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& bg,
 		       u32 code, bool dw, bool bold, bool italic,
 		       bool underline, bool strikethrough);
-	void drawBoxChar(u32 x, u32 y, u32 w, u32 h, u32 code, u32 pixel);
+	void drawBoxChar(u32 x, u32 y, u32 w, u32 h, u32 code, u32 pixel, u32 bgPixel);
 	void adjustOffset(u32 &x, u32 &y);
 
 	void initFillDraw();
