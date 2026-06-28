@@ -363,6 +363,99 @@ void Screen::fillRectPixel(u32 x, u32 y, u32 w, u32 h, u32 pixel)
 #endif
 }
 
+void Screen::drawBoxChar(u32 x, u32 y, u32 w, u32 h, u32 code, u32 pixel)
+{
+	const u32 T  = 2;  // single-line thickness
+	const u32 DT = 1;  // double-line each stroke
+	const u32 DG = 1;  // double-line gap
+
+	u32 cx = w / 2, cy = h / 2;
+	u32 sH = cy - T / 2;       // single horiz Y
+	u32 sV = cx - T / 2;       // single vert X
+	u32 dH1 = cy - DT - DG;    // double horiz top Y
+	u32 dH2 = cy + DG;         // double horiz bot Y
+	u32 dV1 = cx - DT - DG;    // double vert left X
+	u32 dV2 = cx + DG;         // double vert right X
+
+	// Half-segment helpers
+	u32 rH_x = x + cx;
+	u32 lH_w = cx;
+	u32 bV_y = y + cy;
+	u32 tV_h = cy;
+
+	switch (code) {
+	/* ─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ ╴ ╵ ╶ ╷ */
+	case 0x2500: fillRectPixel(x,         y + sH,      w,  T,  pixel); break;
+	case 0x2502: fillRectPixel(x + sV,    y,            T,  h,  pixel); break;
+	case 0x250C: fillRectPixel(rH_x,      y + sH, w - cx,  T,  pixel);
+	             fillRectPixel(x + sV,    bV_y,         T, h - cy, pixel); break;
+	case 0x2510: fillRectPixel(x,         y + sH, lH_w, T,  pixel);
+	             fillRectPixel(x + sV,    bV_y,         T, h - cy, pixel); break;
+	case 0x2514: fillRectPixel(rH_x,      y + sH, w - cx,  T,  pixel);
+	             fillRectPixel(x + sV,    y,            T, tV_h, pixel); break;
+	case 0x2518: fillRectPixel(x,         y + sH, lH_w, T,  pixel);
+	             fillRectPixel(x + sV,    y,            T, tV_h, pixel); break;
+	case 0x251C: fillRectPixel(rH_x,      y + sH, w - cx,  T,  pixel);
+	             fillRectPixel(x + sV,    y,            T,  h,  pixel); break;
+	case 0x2524: fillRectPixel(x,         y + sH, lH_w, T,  pixel);
+	             fillRectPixel(x + sV,    y,            T,  h,  pixel); break;
+	case 0x252C: fillRectPixel(x,         y + sH,      w,  T,  pixel);
+	             fillRectPixel(x + sV,    bV_y,         T, h - cy, pixel); break;
+	case 0x2534: fillRectPixel(x,         y + sH,      w,  T,  pixel);
+	             fillRectPixel(x + sV,    y,            T, tV_h, pixel); break;
+	case 0x253C: fillRectPixel(x,         y + sH,      w,  T,  pixel);
+	             fillRectPixel(x + sV,    y,            T,  h,  pixel); break;
+	case 0x2574: fillRectPixel(x,         y + sH, lH_w, T,  pixel); break;
+	case 0x2575: fillRectPixel(x + sV,    bV_y,         T, h - cy, pixel); break;
+	case 0x2576: fillRectPixel(rH_x,      y + sH, w - cx,  T,  pixel); break;
+	case 0x2577: fillRectPixel(x + sV,    y,            T, tV_h, pixel); break;
+
+	/* ═ ║ ╔ ╗ ╚ ╝ ╠ ╣ ╦ ╩ ╬ */
+	case 0x2550: fillRectPixel(x,         y + dH1, w, DT, pixel);
+	             fillRectPixel(x,         y + dH2, w, DT, pixel); break;
+	case 0x2551: fillRectPixel(x + dV1,   y,       DT, h, pixel);
+	             fillRectPixel(x + dV2,   y,       DT, h, pixel); break;
+	case 0x2554: fillRectPixel(rH_x,      y + dH1, w - cx, DT, pixel);
+	             fillRectPixel(rH_x,      y + dH2, w - cx, DT, pixel);
+	             fillRectPixel(x + dV1,   bV_y,    DT, h - cy, pixel);
+	             fillRectPixel(x + dV2,   bV_y,    DT, h - cy, pixel); break;
+	case 0x2557: fillRectPixel(x,         y + dH1, lH_w, DT, pixel);
+	             fillRectPixel(x,         y + dH2, lH_w, DT, pixel);
+	             fillRectPixel(x + dV1,   bV_y,    DT, h - cy, pixel);
+	             fillRectPixel(x + dV2,   bV_y,    DT, h - cy, pixel); break;
+	case 0x255A: fillRectPixel(rH_x,      y + dH1, w - cx, DT, pixel);
+	             fillRectPixel(rH_x,      y + dH2, w - cx, DT, pixel);
+	             fillRectPixel(x + dV1,   y,       DT, tV_h, pixel);
+	             fillRectPixel(x + dV2,   y,       DT, tV_h, pixel); break;
+	case 0x255D: fillRectPixel(x,         y + dH1, lH_w, DT, pixel);
+	             fillRectPixel(x,         y + dH2, lH_w, DT, pixel);
+	             fillRectPixel(x + dV1,   y,       DT, tV_h, pixel);
+	             fillRectPixel(x + dV2,   y,       DT, tV_h, pixel); break;
+	case 0x2560: fillRectPixel(rH_x,      y + dH1, w - cx, DT, pixel);
+	             fillRectPixel(rH_x,      y + dH2, w - cx, DT, pixel);
+	             fillRectPixel(x + dV1,   y,       DT,  h,  pixel);
+	             fillRectPixel(x + dV2,   y,       DT,  h,  pixel); break;
+	case 0x2563: fillRectPixel(x,         y + dH1, lH_w, DT, pixel);
+	             fillRectPixel(x,         y + dH2, lH_w, DT, pixel);
+	             fillRectPixel(x + dV1,   y,       DT,  h,  pixel);
+	             fillRectPixel(x + dV2,   y,       DT,  h,  pixel); break;
+	case 0x2566: fillRectPixel(x,         y + dH1,      w, DT, pixel);
+	             fillRectPixel(x,         y + dH2,      w, DT, pixel);
+	             fillRectPixel(x + dV1,   bV_y,    DT, h - cy, pixel);
+	             fillRectPixel(x + dV2,   bV_y,    DT, h - cy, pixel); break;
+	case 0x2569: fillRectPixel(x,         y + dH1,      w, DT, pixel);
+	             fillRectPixel(x,         y + dH2,      w, DT, pixel);
+	             fillRectPixel(x + dV1,   y,       DT, tV_h, pixel);
+	             fillRectPixel(x + dV2,   y,       DT, tV_h, pixel); break;
+	case 0x256C: fillRectPixel(x,         y + dH1,      w, DT, pixel);
+	             fillRectPixel(x,         y + dH2,      w, DT, pixel);
+	             fillRectPixel(x + dV1,   y,       DT,  h,  pixel);
+	             fillRectPixel(x + dV2,   y,       DT,  h,  pixel); break;
+
+	default: break; /* unsupported box-drawing char — leave cell empty */
+	}
+}
+
 void Screen::drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& bg,
 		       u32 code, bool dw, bool bold, bool italic,
 		       bool underline, bool strikethrough)
@@ -373,6 +466,11 @@ void Screen::drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& b
 	u32 cellX = x, cellY = y, cellW = w, cellH = h;
 	if (x + w > mWidth) { w = mWidth - x; cellW = w; }
 	if (y + h > mHeight) { h = mHeight - y; cellH = h; }
+
+	if (code >= 0x2500 && code <= 0x257F) {
+		drawBoxChar(x, y, w, h, code, fg.pixel);
+		return;
+	}
 
 	Font::Glyph *glyph = (Font::Glyph *)Font::instance()->getGlyph(code, bold, italic);
 	if (!glyph) {
