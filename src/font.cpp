@@ -105,7 +105,7 @@ Font *Font::createInstance()
 {
 	FcInit();
 
-	s8 buf[64];
+	s8 buf[256];
 	Config::instance()->getOption("font-names", buf, sizeof(buf));
 
 	FcPattern *pat = FcNameParse((FcChar8 *)(*buf ? buf : "mono"));

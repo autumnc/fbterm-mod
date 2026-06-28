@@ -102,10 +102,13 @@ bool RgaAdapter::probeHardware()
 	info.virAddr = dummy;
 	info.mmuFlag = 1;
 	info.format = RK_FORMAT_RGBA_8888;
-	info.rect.x = 0;
-	info.rect.y = 0;
+	info.rect.xoffset = 0;
+	info.rect.yoffset = 0;
 	info.rect.width = 4;
 	info.rect.height = 4;
+		info.rect.wstride = 4;
+		info.rect.hstride = 4;
+		info.rect.format = RK_FORMAT_RGBA_8888;
 
 	int ret = c_RkRgaBlit(&info, &info, NULL);
 	return (ret == 0);
@@ -149,19 +152,25 @@ bool RgaAdapter::copy(void *dst, void *src, u32 width, u32 height, u32 stride, u
 	srcInfo.virAddr = src;
 	srcInfo.mmuFlag = 1;
 	srcInfo.format = fmt;
-	srcInfo.rect.x = 0;
-	srcInfo.rect.y = 0;
+	srcInfo.rect.xoffset = 0;
+	srcInfo.rect.yoffset = 0;
 	srcInfo.rect.width = (int)width;
 	srcInfo.rect.height = (int)height;
+		srcInfo.rect.wstride = wstride;
+		srcInfo.rect.hstride = (int)height;
+		srcInfo.rect.format = fmt;
 
 	dstInfo.fd = -1;
 	dstInfo.virAddr = dst;
 	dstInfo.mmuFlag = 1;
 	dstInfo.format = fmt;
-	dstInfo.rect.x = 0;
-	dstInfo.rect.y = 0;
+	dstInfo.rect.xoffset = 0;
+	dstInfo.rect.yoffset = 0;
 	dstInfo.rect.width = (int)width;
 	dstInfo.rect.height = (int)height;
+		dstInfo.rect.wstride = wstride;
+		dstInfo.rect.hstride = (int)height;
+		dstInfo.rect.format = fmt;
 
 	int ret = c_RkRgaBlit(&srcInfo, &dstInfo, NULL);
 	return (ret == 0);
@@ -199,10 +208,13 @@ bool RgaAdapter::fill(void *dst, u32 x, u32 y, u32 w, u32 h,
 	dstInfo.virAddr = dst;
 	dstInfo.mmuFlag = 1;
 	dstInfo.format = fmt;
-	dstInfo.rect.x = (int)x;
-	dstInfo.rect.y = (int)y;
+	dstInfo.rect.xoffset = (int)x;
+	dstInfo.rect.yoffset = (int)y;
 	dstInfo.rect.width = (int)w;
 	dstInfo.rect.height = (int)h;
+		dstInfo.rect.wstride = wstride;
+		dstInfo.rect.hstride = (int)fbHeight;
+		dstInfo.rect.format = fmt;
 	dstInfo.color = (int)pixel;
 
 	int ret = c_RkRgaColorFill(&dstInfo);
@@ -289,19 +301,25 @@ bool RgaAdapter::flushDirtyRects(void *backBuf, void *realBuf,
 		srcInfo.virAddr = srcPtr;
 		srcInfo.mmuFlag = 1;
 		srcInfo.format = fmt;
-		srcInfo.rect.x = 0;
-		srcInfo.rect.y = 0;
+		srcInfo.rect.xoffset = 0;
+		srcInfo.rect.yoffset = 0;
 		srcInfo.rect.width = (int)r.w;
 		srcInfo.rect.height = (int)r.h;
+			srcInfo.rect.wstride = wstride;
+			srcInfo.rect.hstride = (int)r.h;
+			srcInfo.rect.format = fmt;
 
 		dstInfo.fd = -1;
 		dstInfo.virAddr = dstPtr;
 		dstInfo.mmuFlag = 1;
 		dstInfo.format = fmt;
-		dstInfo.rect.x = 0;
-		dstInfo.rect.y = 0;
+		dstInfo.rect.xoffset = 0;
+		dstInfo.rect.yoffset = 0;
 		dstInfo.rect.width = (int)r.w;
 		dstInfo.rect.height = (int)r.h;
+			dstInfo.rect.wstride = wstride;
+			dstInfo.rect.hstride = (int)r.h;
+			dstInfo.rect.format = fmt;
 
 		int ret = c_RkRgaBlit(&srcInfo, &dstInfo, NULL);
 		if (ret != 0) {
