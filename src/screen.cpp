@@ -370,10 +370,13 @@ void Screen::drawBoxChar(u32 x, u32 y, u32 w, u32 h, u32 code, u32 pixel, u32 bg
 	const u32 T  = 2;  // single-line thickness
 	const u32 DT = 1;  // double-line each stroke
 	const u32 DG = 1;  // double-line gap
+	const u32 HT = 4;  // heavy-line thickness
 
 	u32 cx = w / 2, cy = h / 2;
 	u32 sH = cy - T / 2;       // single horiz Y
 	u32 sV = cx - T / 2;       // single vert X
+	u32 hH = cy - HT / 2;      // heavy horiz Y
+	u32 hV = cx - HT / 2;      // heavy vert X
 	u32 dH1 = cy - DT - DG;    // double horiz top Y
 	u32 dH2 = cy + DG;         // double horiz bot Y
 	u32 dV1 = cx - DT - DG;    // double vert left X
@@ -453,6 +456,28 @@ void Screen::drawBoxChar(u32 x, u32 y, u32 w, u32 h, u32 code, u32 pixel, u32 bg
 	             fillRectPixel(x,         y + dH2,      w, DT, pixel);
 	             fillRectPixel(x + dV1,   y,       DT,  h,  pixel);
 	             fillRectPixel(x + dV2,   y,       DT,  h,  pixel); break;
+
+	/* ━ ┃ ┏ ┓ ┗ ┛ ┣ ┫ ┳ ┻ ╋ (heavy) */
+	case 0x2501: fillRectPixel(x,         y + hH,      w,  HT, pixel); break;
+	case 0x2503: fillRectPixel(x + hV,    y,           HT,  h,  pixel); break;
+	case 0x250F: fillRectPixel(rH_x,      y + hH, w - cx,  HT, pixel);
+	             fillRectPixel(x + hV,    bV_y,        HT, h - cy, pixel); break;
+	case 0x2513: fillRectPixel(x,         y + hH, lH_w, HT, pixel);
+	             fillRectPixel(x + hV,    bV_y,        HT, h - cy, pixel); break;
+	case 0x2517: fillRectPixel(rH_x,      y + hH, w - cx,  HT, pixel);
+	             fillRectPixel(x + hV,    y,           HT, tV_h, pixel); break;
+	case 0x251B: fillRectPixel(x,         y + hH, lH_w, HT, pixel);
+	             fillRectPixel(x + hV,    y,           HT, tV_h, pixel); break;
+	case 0x2523: fillRectPixel(rH_x,      y + sH, w - cx,  T,  pixel);
+	             fillRectPixel(x + hV,    y,           HT,  h,  pixel); break;
+	case 0x252B: fillRectPixel(x,         y + sH, lH_w, T,  pixel);
+	             fillRectPixel(x + hV,    y,           HT,  h,  pixel); break;
+	case 0x2533: fillRectPixel(x,         y + hH,      w,  HT, pixel);
+	             fillRectPixel(x + sV,    bV_y,         T, h - cy, pixel); break;
+	case 0x253B: fillRectPixel(x,         y + hH,      w,  HT, pixel);
+	             fillRectPixel(x + sV,    y,            T, tV_h, pixel); break;
+	case 0x254B: fillRectPixel(x,         y + hH,      w,  HT, pixel);
+	             fillRectPixel(x + hV,    y,           HT,  h,  pixel); break;
 
 	default: break; /* unsupported box-drawing char — leave cell empty */
 	}
