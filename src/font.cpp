@@ -578,6 +578,25 @@ Font::Glyph *Font::getGlyph(u32 unicode, bool bold, bool italic)
 		}
 	}
 
+	if (needShear && glyph->width > (s32)mWidth) {
+		u32 targetWidth = mWidth;
+		u32 newPitch = (u32)((u64)nw * targetWidth / (u32)glyph->width);
+		u8 *tmp = new u8[nw];
+		for (y = 0; y < nh; y++) {
+			u8 *row = glyph->pixmap + y * nw;
+			memcpy(tmp, row, nw);
+			memset(row, 0, nw);
+			for (x = 0; x < newPitch; x++) {
+				u32 srcX = ((u32)x * (u32)glyph->width + targetWidth / 2) / targetWidth;
+				if (srcX < nw) row[x] = tmp[srcX];
+			}
+		}
+		delete[] tmp;
+		glyph->left = (s32)((s64)glyph->left * (s32)targetWidth / (u32)glyph->width);
+		glyph->width = (s32)targetWidth;
+		glyph->pitch = (s16)newPitch;
+	}
+
 	if (!noCache) (*cache)[unicode] = glyph;
 	return glyph;
 }
