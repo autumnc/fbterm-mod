@@ -22,6 +22,7 @@
 #include <ft2build.h>
 #include FT_GLYPH_H
 #include FT_SYNTHESIS_H
+#include FT_LCD_FILTER_H
 #include "font.h"
 #include "screen.h"
 #include "fbconfig.h"
@@ -202,6 +203,7 @@ Font::Font()
 	memset(glyphCacheInitedItalic, 0, sizeof(bool) * 0x300);
 
 	FT_Init_FreeType(&ftlib);
+	FT_Library_SetLcdFilter(ftlib, FT_LCD_FILTER_DEFAULT);
 	openFont(0, fontList, fontFaces, fontFlags);
 
 	FT_Face face = fontFaces[0];
@@ -377,7 +379,32 @@ static void openFont(u32 index, FcFontSet *list, FT_Face *faces, u32 *flags)
 		FcPatternGetBool(pattern, FC_HINTING, 0, &hinting);
 		FcPatternGetInteger(pattern, FC_HINT_STYLE, 0, &hint_style);
 
-		load_flags |= FT_LOAD_TARGET_NORMAL; /* hardcode hinting to normal because there're some issues with infinality */
+		if (!hinting) {
+			load_flags |= FT_LOAD_NO_HINTING;
+		} else {
+			switch (hint_style) {
+			case FC_HINT_NONE:
+				break;
+			case FC_HINT_SLIGHT:
+				load_flags |= FT_LOAD_TARGET_LIGHT;
+				break;
+			case FC_HINT_FULL:
+			case FC_HINT_MEDIUM:
+			default:
+				load_flags |= FT_LOAD_TARGET_NORMAL;
+				break;
+			}
+		}
+
+		int rgba = FC_RGBA_UNKNOWN;
+		FcPatternGetInteger(pattern, FC_RGBA, 0, &rgba);
+		if (rgba == FC_RGBA_RGB || rgba == FC_RGBA_BGR) {
+			load_flags &= ~(15 << 16);
+			load_flags |= FT_LOAD_TARGET_LCD;
+		} else if (rgba == FC_RGBA_VRGB || rgba == FC_RGBA_VBGR) {
+			load_flags &= ~(15 << 16);
+			load_flags |= FT_LOAD_TARGET_LCD_V;
+		}
 	} else {
 		load_flags |= FT_LOAD_TARGET_MONO;
 	}
