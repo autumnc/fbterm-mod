@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.61])
-AC_INIT([fbterm-mod], [1.16])
+AC_INIT([fbterm-mod], [1.17])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/fbterm.cpp])
 AC_CONFIG_HEADERS([config.h])
