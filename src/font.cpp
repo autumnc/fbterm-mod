@@ -634,6 +634,22 @@ Font::Glyph *Font::getGlyph(u32 unicode, bool bold, bool italic)
 		glyph->pitch = (s16)newPitch;
 	}
 
+	/* Harden leftmost pixel columns of right-pointing Powerline separator
+	 * glyphs to eliminate anti-aliased seams at cell boundaries. These
+	 * glyphs overlap the previous cell (left < 0) and their overflow
+	 * pixels are anti-aliased, creating visible gaps with threshold
+	 * rendering at certain font sizes. */
+	if (glyph->left < 0 && unicode >= 0xE0B0 && unicode <= 0xE0BF
+	    && (unicode & 1) == 0) {
+		s32 overflowCols = -glyph->left;
+		s32 pitch = glyph->pitch;
+		for (s32 row = 0; row < glyph->height; row++) {
+			for (s32 col = 0; col < overflowCols && col < glyph->width; col++) {
+				glyph->pixmap[row * pitch + col] = 0xFF;
+			}
+		}
+	}
+
 	if (!noCache) (*cache)[unicode] = glyph;
 	return glyph;
 }

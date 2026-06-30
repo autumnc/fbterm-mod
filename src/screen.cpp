@@ -24,6 +24,13 @@
 #include <sys/ioctl.h>
 #include "screen.h"
 #include "font.h"
+
+static bool isPUA(u32 code)
+{
+	return (code >= 0xE000 && code <= 0xF8FF)
+	    || (code >= 0xF0000 && code <= 0xFFFFD)
+	    || (code >= 0x100000 && code <= 0x10FFFD);
+}
 #include "fbshellman.h"
 #include "fbconfig.h"
 #include "fbdev.h"
@@ -237,6 +244,18 @@ void Screen::drawText(u32 x, u32 y, u8 fc, u8 bc, bool direct_fg, bool direct_bg
 		if (*text == 0x20) {
 			if (draw_text) {
 				draw_text = false;
+				/* If last char overflows, fill space bg first so
+				 * the icon draws on top of the space background. */
+				u32 lastChar = *(text - 1);
+				bool lastDw = *(dw - 1);
+				if (!lastDw && isPUA(lastChar)) {
+					Font::Glyph *g = Font::instance()->getGlyph(lastChar, bold, italic);
+					if (g && g->width > FW(1)) {
+						fillRectPixel(x, y, FW(1), FH(1), bg.pixel);
+						drawGlyphs(startx, y, fg, bg, startnum - num, starttext, startdw, bold, italic, underline, strikethrough);
+						continue;
+					}
+				}
 				drawGlyphs(startx, y, fg, bg, startnum - num, starttext, startdw, bold, italic, underline, strikethrough);
 			}
 
@@ -503,6 +522,11 @@ void Screen::drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& b
 	if (!glyph) {
 		fillRectPixel(x, y, w, h, bg.pixel);
 	} else {
+		if (!dw && isPUA(code) && glyph->width > FW(1)) {
+			w = FW(2);
+			cellW = w;
+			if (x + w > mWidth) { w = mWidth - x; cellW = w; }
+		}
 		s32 top = glyph->top;
 	if (top < 0) top = 0;
 

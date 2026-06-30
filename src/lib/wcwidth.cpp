@@ -317,9 +317,14 @@ s32 VTerm::charWidth(u32 ucs)
 {
 	s32 w = ambiguous_wide ? mk_wcwidth_cjk(ucs) : mk_wcwidth(ucs);
 	if (w == 1 && Font::instance()) {
-		s32 gw = Font::instance()->glyphWidth(ucs);
-		if (gw > 0 && gw > (s32)(Font::instance()->width() * 13 / 10))
-			w = 2;
+		bool isPUA = (ucs >= 0xE000 && ucs <= 0xF8FF)
+			|| (ucs >= 0xF0000 && ucs <= 0xFFFFD)
+			|| (ucs >= 0x100000 && ucs <= 0x10FFFD);
+		if (!isPUA) {
+			s32 gw = Font::instance()->glyphWidth(ucs);
+			if (gw > 0 && gw > (s32)(Font::instance()->width() * 13 / 10))
+				w = 2;
+		}
 	}
 	return w;
 }
