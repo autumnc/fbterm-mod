@@ -55,6 +55,7 @@ static void openFont(u32 index, FcFontSet *list, FT_Face *faces, u32 *flags);
 
 DEFINE_INSTANCE(Font)
 
+double Font::mPrimaryHeightRatio = 0;
 
 static FcFontSet *createFontList(const s8 *fontNames, u32 pixelSize)
 {
@@ -214,6 +215,7 @@ Font::Font()
 		FT_Load_Char(face, ' ', FT_LOAD_DEFAULT);
 		mWidth = face->glyph->advance.x >> 6;
 		mDescender = face->size->metrics.descender >> 6;
+		mPrimaryHeightRatio = (double)(face->ascender - face->descender) / face->units_per_EM;
 	} else if (face->num_fixed_sizes) {
 		double dsize;
 		FcPatternGetDouble(fontList->fonts[0], FC_PIXEL_SIZE, 0, &dsize);
@@ -363,7 +365,15 @@ static void openFont(u32 index, FcFontSet *list, FT_Face *faces, u32 *flags)
 
 	double ysize;
 	FcPatternGetDouble(pattern, FC_PIXEL_SIZE, 0, &ysize);
-	FT_Set_Pixel_Sizes(face, 0, (FT_UInt)ysize);
+
+	if (Font::mPrimaryHeightRatio > 0 && (face->face_flags & FT_FACE_FLAG_SCALABLE)) {
+		double ratio = (double)(face->ascender - face->descender) / face->units_per_EM;
+		if (ratio > 0) {
+			ysize = ysize * Font::mPrimaryHeightRatio / ratio;
+		}
+	}
+
+	FT_Set_Char_Size(face, 0, (FT_F26Dot6)(ysize * 64), 0, 0);
 
 	int load_flags = FT_LOAD_DEFAULT;
 
