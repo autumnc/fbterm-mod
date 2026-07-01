@@ -75,7 +75,10 @@ RgaAdapter::~RgaAdapter()
 bool RgaAdapter::probeHardware()
 {
 	int fd = open("/dev/rga", O_RDONLY);
-	if (fd < 0) return false;
+	if (fd < 0) {
+		fprintf(stderr, "[rga] /dev/rga not found (%s)\n", strerror(errno));
+		return false;
+	}
 	close(fd);
 
 #ifdef RGA_USE_IM2D
@@ -90,28 +93,11 @@ bool RgaAdapter::probeHardware()
 
 #elif defined(RGA_USE_OLD_API)
 	// Probe with old API: init, try a tiny blit
-	if (c_RkRgaInit() != 0) return false;
-	sOldApiInited = true;
-
-	u8 dummy[16] __attribute__((aligned(16)));
-	memset(dummy, 0, sizeof(dummy));
-
-	rga_info_t info;
-	memset(&info, 0, sizeof(info));
-	info.fd = -1;
-	info.virAddr = dummy;
-	info.mmuFlag = 1;
-	info.format = RK_FORMAT_RGBA_8888;
-	info.rect.xoffset = 0;
-	info.rect.yoffset = 0;
-	info.rect.width = 4;
-	info.rect.height = 4;
-		info.rect.wstride = 4;
-		info.rect.hstride = 4;
-		info.rect.format = RK_FORMAT_RGBA_8888;
-
-	int ret = c_RkRgaBlit(&info, &info, NULL);
-	return (ret == 0);
+		// Probe: init only, skip test blit (stack buffer
+		// fails mmuFlag=1 get_user_pages on 3.10 kernel)
+		if (c_RkRgaInit() != 0) return false;
+		sOldApiInited = true;
+		return true;
 
 #else
 	return false;
