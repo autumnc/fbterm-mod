@@ -523,24 +523,29 @@ void Screen::drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& b
 	if (!glyph) {
 		fillRectPixel(x, y, w, h, bg.pixel);
 	} else {
+		bool isPowerline = (code >= 0xE0A0 && code <= 0xE0CF);
+		s32 pixmapLeftSkip = 0;
 		if (!dw && isPUA(code) && glyph->width > FW(1)) {
 			if (!canOverflow) {
 				Font::Glyph *narrowGlyph = Font::instance()->getNarrowGlyph(code, bold, italic);
 				if (narrowGlyph) glyph = narrowGlyph;
 			}
-			if (glyph->width > FW(1)) {
+			if (glyph->width > FW(1) && !isPowerline) {
 				w = FW(2);
 				cellW = w;
 				if (x + w > mWidth) { w = mWidth - x; cellW = w; }
 			}
 		}
+		if (isPowerline && glyph->left < 0)
+			pixmapLeftSkip = -glyph->left;
 		s32 top = glyph->top;
 	if (top < 0) top = 0;
 
 	s32 left = glyph->left;
 	if ((s32)x + left < 0) left = -x;
+	if (pixmapLeftSkip) left = 0;
 
-	s32 width = glyph->width;
+	s32 width = glyph->width - pixmapLeftSkip;
 	if (width > w - left) width = w - left;
 	if ((s32)x + left + width > (s32)mWidth) width = mWidth - ((s32)x + left);
 	if (width < 0) width = 0;
@@ -567,6 +572,7 @@ void Screen::drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& b
 	rotateRect(x, y, nwidth, nheight);
 
 	u8 *pixmap = glyph->pixmap;
+	if (pixmapLeftSkip && mRotateType == Rotate0) pixmap += pixmapLeftSkip;
 	u32 wdiff = glyph->width - width, hdiff = glyph->height - height;
 
 	if (wdiff) {
