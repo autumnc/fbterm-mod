@@ -37,6 +37,7 @@ public:
 	};
 
 	Glyph *getGlyph(u32 unicode, bool bold = false, bool italic = false);
+	Glyph *getNarrowGlyph(u32 unicode, bool bold, bool italic);
 	s32 glyphWidth(u32 unicode);
 	u32 width() { return mWidth; }
 	u32 height() { return mHeight; }

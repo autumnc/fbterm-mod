@@ -293,7 +293,8 @@ void Screen::drawGlyphs(u32 x, u32 y, const RenderColor& fg, const RenderColor& 
 			bool underline, bool strikethrough)
 {
 	for (; num--; text++, dw++) {
-		drawGlyph(x, y, fg, bg, *text, *dw, bold, italic, underline, strikethrough);
+		bool canOverflow = (num == 0);
+		drawGlyph(x, y, fg, bg, *text, *dw, bold, italic, underline, strikethrough, canOverflow);
 		x += *dw ? FW(2) : FW(1);
 	}
 }
@@ -504,7 +505,7 @@ void Screen::drawBoxChar(u32 x, u32 y, u32 w, u32 h, u32 code, u32 pixel, u32 bg
 
 void Screen::drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& bg,
 		       u32 code, bool dw, bool bold, bool italic,
-		       bool underline, bool strikethrough)
+		       bool underline, bool strikethrough, bool canOverflow)
 {
 	if (x >= mWidth || y >= mHeight) return;
 
@@ -523,9 +524,15 @@ void Screen::drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& b
 		fillRectPixel(x, y, w, h, bg.pixel);
 	} else {
 		if (!dw && isPUA(code) && glyph->width > FW(1)) {
-			w = FW(2);
-			cellW = w;
-			if (x + w > mWidth) { w = mWidth - x; cellW = w; }
+			if (!canOverflow) {
+				Font::Glyph *narrowGlyph = Font::instance()->getNarrowGlyph(code, bold, italic);
+				if (narrowGlyph) glyph = narrowGlyph;
+			}
+			if (glyph->width > FW(1)) {
+				w = FW(2);
+				cellW = w;
+				if (x + w > mWidth) { w = mWidth - x; cellW = w; }
+			}
 		}
 		s32 top = glyph->top;
 	if (top < 0) top = 0;

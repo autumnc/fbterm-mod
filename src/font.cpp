@@ -456,6 +456,87 @@ static int fontIndex(u32 unicode, FcFontSet *list)
 	return -1;
 }
 
+static int fontIndexFrom(u32 unicode, FcFontSet *list, u32 startFrom)
+{
+	if (!list || startFrom >= list->nfont) return -1;
+
+	if (unicode <= 0xffff) {
+		if (!FcCharSetHasChar(unicodeMap, unicode)) return -1;
+
+		FcCharSet *charset;
+		for (u32 i = startFrom; i < list->nfont; i++) {
+			FcPatternGetCharSet(list->fonts[i], FC_CHARSET, 0, &charset);
+			if (FcCharSetHasChar(charset, unicode)) return i;
+		}
+		return -1;
+	}
+
+	for (u32 i = startFrom; i < list->nfont; i++) {
+		FT_Face face = fontFaces[i];
+		if (!face || face == (FT_Face)-1) {
+			if (list == fontList) openFont(i, fontList, fontFaces, fontFlags);
+			else if (list == fontListBold) openFont(i, fontListBold, fontFacesBold, fontFlagsBold);
+			else if (list == fontListItalic) openFont(i, fontListItalic, fontFacesItalic, fontFlagsItalic);
+			else return -1;
+			face = (list == fontList) ? fontFaces[i] :
+				(list == fontListBold) ? fontFacesBold[i] : fontFacesItalic[i];
+		}
+		if (face && face != (FT_Face)-1 && FT_Get_Char_Index(face, (FT_ULong)unicode))
+			return i;
+	}
+	return -1;
+}
+
+static Font::Glyph *buildGlyphBitmap(FT_Face face, s32 shearOffset, u32 mHeight, s32 mDescender)
+{
+	FT_Bitmap &bitmap = face->glyph->bitmap;
+	u32 extraWidth = shearOffset;
+
+	u32 x, y, w, h, nx, ny, nw, nh;
+	x = y = 0;
+	w = nw = bitmap.width + extraWidth;
+	h = nh = bitmap.rows;
+	Screen::instance()->rotateRect(x, y, nw, nh);
+
+	Font::Glyph *glyph = (Font::Glyph *)new u8[OFFSET(Font::Glyph, pixmap) + nw * nh];
+	memset(glyph->pixmap, 0, nw * nh);
+	glyph->left = (face->glyph->metrics.horiBearingX >> 6) - (s32)extraWidth;
+	glyph->top = mHeight - 1 + mDescender - (face->glyph->metrics.horiBearingY >> 6);
+	glyph->width = (face->glyph->metrics.width >> 6) + extraWidth;
+	glyph->height = face->glyph->metrics.height >> 6;
+	glyph->pitch = nw;
+
+	u8 *buf = bitmap.buffer;
+	for (y = 0; y < h; y++, buf += bitmap.pitch) {
+		s32 shearShift = 0;
+		if (shearOffset) {
+			shearShift = shearOffset * ((s32)h - 1 - (s32)y) / ((s32)h - 1);
+			if (shearShift < 0) shearShift = 0;
+			if (shearShift > (s32)extraWidth) shearShift = extraWidth;
+		}
+
+		for (x = 0; x < w; x++) {
+			nx = x, ny = y;
+			Screen::instance()->rotatePoint(w, h, nx, ny);
+
+			if (x < extraWidth) continue;
+
+			u8 val;
+			s32 srcX = (s32)(x - extraWidth) - shearShift;
+			if (srcX < 0 || srcX >= (s32)bitmap.width) {
+				val = 0;
+			} else {
+				val = (bitmap.pixel_mode == FT_PIXEL_MODE_MONO) ?
+					((buf[(srcX >> 3)] & (0x80 >> (srcX & 7))) ? 0xff : 0) : buf[srcX];
+			}
+
+			glyph->pixmap[ny * nw + nx] = val;
+		}
+	}
+
+	return glyph;
+}
+
 Font::Glyph *Font::getGlyph(u32 unicode, bool bold, bool italic)
 {
 	Glyph ***cache = &glyphCache;
@@ -553,59 +634,17 @@ Font::Glyph *Font::getGlyph(u32 unicode, bool bold, bool italic)
 	if (needShear && !(face->face_flags & FT_FACE_FLAG_SCALABLE))
 		needShear = false;
 
-	FT_Bitmap &bitmap = face->glyph->bitmap;
-
 	s32 shearOffset = 0;
-	u32 extraWidth = 0;
 	if (needShear) {
 		shearOffset = (face->glyph->metrics.height >> 6) / 4;
 		if (shearOffset < 0) shearOffset = 0;
-		extraWidth = shearOffset;
 	}
 
-	u32 x, y, w, h, nx, ny, nw, nh;
-	x = y = 0;
-	w = nw = bitmap.width + extraWidth;
-	h = nh = bitmap.rows;
-	Screen::instance()->rotateRect(x, y, nw, nh);
-
-	Glyph *glyph = (Glyph *)new u8[OFFSET(Glyph, pixmap) + nw * nh];
-	memset(glyph->pixmap, 0, nw * nh);
-	glyph->left = (face->glyph->metrics.horiBearingX >> 6) - (s32)extraWidth;
-	glyph->top = mHeight - 1 + mDescender - (face->glyph->metrics.horiBearingY >> 6);
-	glyph->width = (face->glyph->metrics.width >> 6) + extraWidth;
-	glyph->height = face->glyph->metrics.height >> 6;
-	glyph->pitch = nw;
-
-	u8 *buf = bitmap.buffer;
-	for (y = 0; y < h; y++, buf += bitmap.pitch) {
-		s32 shearShift = 0;
-		if (needShear) {
-			shearShift = shearOffset * ((s32)h - 1 - (s32)y) / ((s32)h - 1);
-			if (shearShift < 0) shearShift = 0;
-			if (shearShift > (s32)extraWidth) shearShift = extraWidth;
-		}
-
-		for (x = 0; x < w; x++) {
-			nx = x, ny = y;
-			Screen::instance()->rotatePoint(w, h, nx, ny);
-
-			if (x < extraWidth) continue;
-
-			u8 val;
-			s32 srcX = (s32)(x - extraWidth) - shearShift;
-			if (srcX < 0 || srcX >= (s32)bitmap.width) {
-				val = 0;
-			} else {
-				val = (bitmap.pixel_mode == FT_PIXEL_MODE_MONO) ?
-					((buf[(srcX >> 3)] & (0x80 >> (srcX & 7))) ? 0xff : 0) : buf[srcX];
-			}
-
-			glyph->pixmap[ny * nw + nx] = val;
-		}
-	}
+	Glyph *glyph = buildGlyphBitmap(face, shearOffset, mHeight, mDescender);
+	u32 nw = glyph->pitch, nh = glyph->height;
 
 	if (needEmbolding) {
+		u32 x, y;
 		for (y = 0; y < nh; y++) {
 			for (x = nw - 1; x > 0; x--) {
 				u32 idx = y * nw + x;
@@ -615,6 +654,7 @@ Font::Glyph *Font::getGlyph(u32 unicode, bool bold, bool italic)
 		}
 	}
 
+	u32 x, y;
 	if (needShear && glyph->width > (s32)mWidth) {
 		u32 targetWidth = mWidth;
 		u32 newPitch = (u32)((u64)nw * targetWidth / (u32)glyph->width);
@@ -652,6 +692,82 @@ Font::Glyph *Font::getGlyph(u32 unicode, bool bold, bool italic)
 
 	if (!noCache) (*cache)[unicode] = glyph;
 	return glyph;
+}
+
+Font::Glyph *Font::getNarrowGlyph(u32 unicode, bool bold, bool italic)
+{
+	int firstIdx = fontIndex(unicode, fontList);
+	if (firstIdx < 0) return 0;
+
+	bool needEmbolding = bold && !fontListBold;
+	bool needShear = italic && !fontListItalic;
+
+	for (u32 i = firstIdx + 1; i < fontList->nfont; i++) {
+		if (!fontFaces[i]) openFont(i, fontList, fontFaces, fontFlags);
+		FT_Face face = fontFaces[i];
+		if (!face || face == (FT_Face)-1) continue;
+
+		FT_UInt idx = FT_Get_Char_Index(face, (FT_ULong)unicode);
+		if (!idx) continue;
+
+		FT_Load_Glyph(face, idx, FT_LOAD_DEFAULT);
+		s32 gw = face->glyph->metrics.width >> 6;
+		s32 left = face->glyph->metrics.horiBearingX >> 6;
+
+		if (gw + left > (s32)FW(1)) continue;
+
+		u32 flags = fontFlags[i];
+		if ((needEmbolding || needShear) && (face->face_flags & FT_FACE_FLAG_SCALABLE))
+			flags |= FT_LOAD_NO_BITMAP;
+		FT_Load_Glyph(face, idx, FT_LOAD_RENDER | flags);
+
+		if (needShear && !(face->face_flags & FT_FACE_FLAG_SCALABLE))
+			needShear = false;
+
+		s32 shearOffset = 0;
+		if (needShear) {
+			shearOffset = (face->glyph->metrics.height >> 6) / 4;
+			if (shearOffset < 0) shearOffset = 0;
+		}
+
+		Glyph *glyph = buildGlyphBitmap(face, shearOffset, mHeight, mDescender);
+		u32 nw = glyph->pitch, nh = glyph->height;
+
+		if (needEmbolding) {
+			u32 x, y;
+			for (y = 0; y < nh; y++) {
+				for (x = nw - 1; x > 0; x--) {
+					u32 idx2 = y * nw + x;
+					u16 blended = glyph->pixmap[idx2] + (glyph->pixmap[idx2 - 1] * 3 / 4);
+					glyph->pixmap[idx2] = blended > 255 ? 255 : (u8)blended;
+				}
+			}
+		}
+
+		if (needShear && glyph->width > (s32)mWidth) {
+			u32 targetWidth = mWidth;
+			u32 newPitch = (u32)((u64)nw * targetWidth / (u32)glyph->width);
+			u8 *tmp = new u8[nw];
+			u32 x, y;
+			for (y = 0; y < nh; y++) {
+				u8 *row = glyph->pixmap + y * nw;
+				memcpy(tmp, row, nw);
+				memset(row, 0, nw);
+				for (x = 0; x < newPitch; x++) {
+					u32 srcX = ((u32)x * (u32)glyph->width + targetWidth / 2) / targetWidth;
+					if (srcX < nw) row[x] = tmp[srcX];
+				}
+			}
+			delete[] tmp;
+			glyph->left = (s32)((s64)glyph->left * (s32)targetWidth / (u32)glyph->width);
+			glyph->width = (s32)targetWidth;
+			glyph->pitch = (s16)newPitch;
+		}
+
+		return glyph;
+	}
+
+	return 0;
 }
 
 s32 Font::glyphWidth(u32 unicode)
