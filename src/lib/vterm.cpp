@@ -808,6 +808,8 @@ void VTerm::scroll_region(u16 start_y, u16 end_y, s16 num)
 			} else {
 				dirty_startx[y] = temp_sx[takey];
 				dirty_endx[y] = temp_ex[takey];
+				if (dirty_startx[y] > 0) dirty_startx[y]--;
+				if (dirty_endx[y] + 1 < width) dirty_endx[y]++;
 			}
 
 			if (clr) {
@@ -876,6 +878,14 @@ void VTerm::changed_line(u16 y, u16 start_x, u16 end_x)
 
 	if (start_x >= width) start_x = width - 1;
 	if (end_x >= width) end_x = width - 1;
+
+	// Extend dirty range by 1 cell left/right to cover glyph overflow
+	// residue from PUA icons (overflow to the right) and Powerline
+	// separators (overflow to the left). Without this, when an
+	// overflowing glyph is replaced by a space, the overflow portion
+	// in the adjacent cell lingers.
+	if (start_x > 0) start_x--;
+	if (end_x + 1 < width) end_x++;
 
 	if (dirty_startx[y] > start_x) dirty_startx[y] = start_x;
 	if (dirty_endx[y] < end_x) dirty_endx[y] = end_x;
