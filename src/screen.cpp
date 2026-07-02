@@ -530,7 +530,7 @@ void Screen::drawGlyph(u32 x, u32 y, const RenderColor& fg, const RenderColor& b
 				Font::Glyph *narrowGlyph = Font::instance()->getNarrowGlyph(code, bold, italic);
 				if (narrowGlyph) glyph = narrowGlyph;
 			}
-			if (glyph->width > FW(1) && !isPowerline) {
+			if (glyph->width > FW(1)) {
 				w = FW(2);
 				cellW = w;
 				if (x + w > mWidth) { w = mWidth - x; cellW = w; }
